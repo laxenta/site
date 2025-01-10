@@ -1,20 +1,21 @@
+<!-- src/components/layout/NavbarBar.vue -->
 <template>
-  <div class="lesson-card" @click="$emit('click')">
-    <img :src="image" alt="Lesson image" />
-    <h2>{{ title }}</h2>
-    <p>{{ description }}</p>
-  </div>
+  <nav class="navbar">
+    <ul>
+      <li><router-link to="/">Home</router-link></li>
+      <li><router-link to="/chess">Chess</router-link></li>
+      <li><router-link to="/singing">Singing</router-link></li>
+      <li><router-link to="/progress">Progress</router-link></li>
+    </ul>
+  </nav>
 </template>
 
 <script>
 export default {
-  props: {
-    title: String,
-    description: String,
-    image: String,
-  },
+  name: "NavBar",
 };
 </script>
+
 
 <style scoped>
 .lesson-card {

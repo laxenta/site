@@ -1,32 +1,49 @@
 <template>
-  <div id="app">
-    <Navbar />
+  <div class="app-container">
+    <NavbarBar />
     <main class="main-content">
-      <router-view v-slot="{ Component }">
-        <transition name="fade" mode="out-in">
-          <component :is="Component" />
-        </transition>
-      </router-view>
+      <router-view></router-view>
     </main>
-    <Footer />
+    <SiteFooter />
   </div>
 </template>
 
 <script>
-import Navbar from './components/layout/Navbar.vue'
-import Footer from './components/layout/SiteFooter.vue'
-
+import NavbarBar from '/workspaces/a-cool-lil-site/tom/src/components/layout/NavBar.vue';
+import SiteFooter from '/workspaces/a-cool-lil-site/tom/src/components/layout/SiteFooter.vue';
 export default {
   name: 'App',
   components: {
-    Navbar,
-    Footer
+    NavbarBar,
+    SiteFooter
   }
 }
 </script>
-
 <style>
-#app {
+:root {
+  --primary: #2563eb;
+  --secondary: #1e293b;
+  --accent: #3b82f6;
+  --background: #f8fafc;
+  --text: #1e293b;
+  --text-light: #64748b;
+  --border: #e2e8f0;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  background-color: var(--background);
+  color: var(--text);
+  line-height: 1.5;
+}
+
+.app-container {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
@@ -34,16 +51,5 @@ export default {
 
 .main-content {
   flex: 1;
-  padding: 2rem;
-}
-
-.fade-enter-active,
-.fade-leave-active {
-  transition: opacity 0.3s;
-}
-
-.fade-enter-from,
-.fade-leave-to {
-  opacity: 0;
 }
 </style>

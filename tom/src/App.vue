@@ -1,6 +1,8 @@
 <template>
   <div class="app-container">
     <NavbarBar />
+    <!-- Background Audio Component -->
+    <BackgroundAudio />
     <main class="main-content">
       <router-view></router-view>
     </main>
@@ -11,14 +13,18 @@
 <script>
 import NavbarBar from '/workspaces/a-cool-lil-site/tom/src/components/layout/NavBar.vue';
 import SiteFooter from '/workspaces/a-cool-lil-site/tom/src/components/layout/SiteFooter.vue';
+import BackgroundAudio from './components/layout/BackgroundAudio.vue';
+
 export default {
   name: 'App',
   components: {
     NavbarBar,
-    SiteFooter
+    SiteFooter,
+    BackgroundAudio,
   }
 }
 </script>
+
 <style>
 :root {
   --primary: #2563eb;

@@ -17,7 +17,7 @@
 
       <div class="hero-content">
         <h1 class="title-gradient animate-slide-down">
-          Master New Skills
+           Your own chess Mastery Platform :3
         </h1>
         <p class="subtitle animate-slide-up">
           Learn chess and singing with interactive lessons
@@ -201,13 +201,17 @@ export default {
 
 /* Hero Section */
 .hero {
-  height: 90vh;
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
+  height: 100vh; /* Full viewport height */
+  min-height: 100vh; /* Ensure it doesn't collapse */
+  display: flex; /* Flexbox for centering */
+  flex-direction: column; /* Stack content vertically */
+  align-items: center; /* Center horizontally */
+  justify-content: center; /* Center vertically */
+  position: relative; /* Keep it positioned for child layers */
+  overflow: hidden; /* Hide overflowing particles or animations */
+  scroll-snap-align: start; /* Enable snap scrolling if desired */
 }
+
 
 /* Background Elements */
 .hero-background {
@@ -219,10 +223,10 @@ export default {
 .particle-background {
   position: absolute;
   inset: 0;
-  background-image: url('https://media.giphy.com/media/26BROrSHlmyzzHf3i/giphy.gif');
+  background-image: url('https://i.pinimg.com/originals/4b/0c/06/4b0c06a9b539ed37469dbae7dfdd406a.gif');
   background-size: cover;
   opacity: 0.15;
-  filter: brightness(1.2) contrast(1.2);
+  filter: brightness(1.5) contrast(1.2);
 }
 
 .gradient-overlay {
@@ -594,11 +598,11 @@ export default {
 }
 
 .bg-color-2 {
-  background: linear-gradient(to right, #de09a5, #1a28e8);
+  background: linear-gradient(to right, #095edeae, #05ffd5);
 }
 
 .bg-color-3 {
-  background: linear-gradient(to right, #ffcd04, #f30723);
+  background: linear-gradient(to right, #ffcd04, #07f3db);
 }
 
 .bg-color-4 {
@@ -617,6 +621,14 @@ export default {
 .skill-card:hover {
   transform: translateY(-5px);
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+.hero {
+  scroll-snap-align: start; /* Ensure the section snaps to view */
 }
 
 </style>

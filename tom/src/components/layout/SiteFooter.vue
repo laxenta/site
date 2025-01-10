@@ -1,76 +1,119 @@
 <template>
   <footer class="footer">
-    <div class="footer-container">
-      <div class="footer-content">
+    <img
+      src="https://i.pinimg.com/originals/6a/cd/07/6acd0780a4c693b2cf8da52b5c44b18e.gif"
+      alt="Animated Chess GIF"
+      class="footer-bg"
+    />
+    <div class="footer-overlay">
+      <div class="footer-grid">
         <div class="footer-section">
           <h3>Skills Hub</h3>
-          <p>Learn and master new skills</p>
+          <p>Learn and master chess skills</p>
         </div>
         <div class="footer-section">
           <h4>Quick Links</h4>
-          <router-link to="/chess">Chess Lessons</router-link>
-          <router-link to="/singing">Singing Lessons</router-link>
-          <router-link to="/progress">Track Progress</router-link>
+          <router-link to="/chess">
+            <i class="fas fa-chess"></i> Chess Lessons
+          </router-link>
+          <router-link to="/singing">
+            <i class="fas fa-microphone"></i> Singing Lessons
+          </router-link>
+          <router-link to="/progress">
+            <i class="fas fa-chart-line"></i> Track Progress
+          </router-link>
         </div>
-      </div>
-      <div class="footer-bottom">
-        <p>&copy; 2025 Skills Hub. Made with ❤️</p>
+        <div class="footer-section">
+          <h4>Connect with uh me?</h4>
+          <a href="https://discord.com" target="_blank">
+            <i class="fab fa-discord"></i> Join our Discord
+          </a>
+        </div>
       </div>
     </div>
   </footer>
 </template>
-
 <style scoped>
 .footer {
-  background: var(--secondary-color);
-  color: white;
-  padding: var(--spacing-xl) 0 var(--spacing-md);
+  position: relative;
+  height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
   margin-top: auto;
+  font-family: 'Arial', sans-serif;
 }
 
-.footer-container {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 0 var(--spacing-lg);
+/* GIF Background Styling */
+.footer-bg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 0;
+  filter: brightness(50%);
 }
 
-.footer-content {
+/* Overlay Content */
+.footer-overlay {
+  position: relative;
+  z-index: 1;
+  text-align: center;
+  color: #fff; /* Plain white text */
+  padding: var(--spacing-md);
+  width: 100%;
+}
+
+/* Grid Layout for Text Distribution */
+.footer-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: var(--spacing-xl);
-  margin-bottom: var(--spacing-xl);
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--spacing-lg);
+  text-align: center;
+  align-items: center;
 }
 
+/* Footer Section Styling */
 .footer-section {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-md);
+  align-items: center;
+  gap: var(--spacing-sm);
 }
 
-.footer-section h3 {
-  font-size: 1.5rem;
-  color: var(--primary-color);
-}
-
-.footer-section h4 {
-  color: var(--accent-color);
-  margin-bottom: var(--spacing-sm);
+.footer-section h3,
+.footer-section h4,
+.footer-section p {
+  margin: 0;
+  color: #ffffff; /* Ensure text is plain white */
+  font-weight: normal;
 }
 
 .footer-section a {
-  color: var(--text-secondary);
+  color: #ffffff;
   text-decoration: none;
-  transition: color 0.3s ease;
-  margin-bottom: var(--spacing-sm);
+  transition: opacity 0.3s ease;
 }
 
 .footer-section a:hover {
-  color: var(--primary-color);
+  opacity: 0.8;
 }
 
-.footer-bottom {
-  padding-top: var(--spacing-md);
-  text-align: center;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
+.footer-section i {
+  margin-right: 5px;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 768px) {
+  .footer {
+    height: 180px;
+  }
+  .footer-section h3,
+  .footer-section h4 {
+    font-size: 1rem;
+  }
 }
 </style>

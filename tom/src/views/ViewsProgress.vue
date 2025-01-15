@@ -1,6 +1,6 @@
 <template>
-  <div class="home">
-    <h1>Welcome to Skills Hub</h1>
+  <div class="progress">
+    <h1>ehe</h1>
     <div class="skills-grid">
       <LessonCard
         v-for="skill in skills"

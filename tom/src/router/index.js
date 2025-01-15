@@ -12,25 +12,16 @@ const routes = [
     component: () => import('../views/chess/ChessHome.vue')
   },
   {
-    path: '/chess/lesson/:id',
-    name: 'ChessLesson',
-    component: () => import('../views/chess/ChessLesson1.vue')
-  },
-  {
     path: '/singing',
     name: 'SingingHome',
     component: () => import('../views/singing/SingingHome.vue')
   },
   {
-    path: '/singing/lesson/:id',
-    name: 'SingingLesson',
-    component: () => import('../views/singing/SingingLesson1.vue')
-  },
-  {
     path: '/progress',
-    name: 'Progress',
-    component: () => import('../views/ViewsProgress.vue')
-  }
+    name: 'ViewsProgress',
+    component: () => import('../views/singing/SingingHome.vue')
+  },
+
 ]
 
 const router = createRouter({

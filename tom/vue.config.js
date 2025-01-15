@@ -1,13 +1,23 @@
-const { defineConfig } = require('@vue/cli-service');
+const { defineConfig } = require('@vue/cli-service')
 
 module.exports = defineConfig({
   transpileDependencies: true,
   devServer: {
-    host: 'localhost', // Ensure the server binds to localhost
-    port: 8080, // Use port 8080 (or your preferred port)
-    https: false, // Disable HTTPS for local development
+    port: 8080,
+    allowedHosts: 'all',
     client: {
-      webSocketURL: 'ws://localhost:8080/ws', // Use WebSocket for HMR on localhost
+      // Force secure websocket
+      webSocketURL: {
+        protocol: 'wss',
+        hostname: '0.0.0.0'
+      }
     },
-  },
-});
+    webSocketServer: {
+      // Enable WSS in dev server
+      type: 'ws',
+      options: {
+        path: '/ws'
+      }
+    }
+  }
+})

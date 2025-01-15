@@ -4,7 +4,7 @@ const path = require('path');
 const chessServer = require('./chess-server');
 
 const app = express();
-const port = process.env.PORT || 5000; // Change the port to 5000 (or any port you prefer)
+const port = process.env.PORT || 5030; // Change the port to 5000 (or any port you prefer)
 const server = app.listen(port, () => {
     console.log(`Chess server running on port ${port}`);
   });

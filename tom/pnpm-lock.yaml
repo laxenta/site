@@ -14,6 +14,9 @@ importers:
       axios:
         specifier: ^1.7.9
         version: 1.7.9
+      chess-server:
+        specifier: ^1.0.0
+        version: 1.0.0
       chess.js:
         specifier: 1.0.0-beta.8
         version: 1.0.0-beta.8
@@ -803,6 +806,9 @@ packages:
   '@types/node-forge@1.3.11':
     resolution: {integrity: sha512-FQx220y22OKNTqaByeBGqHWYz4cl94tpcxeFdvBo3wjG6XPBuZ0BNgNZRV5J5TFmmcsJ4IzsLkmGRiQbnYsBEQ==}
 
+  '@types/node@12.20.55':
+    resolution: {integrity: sha512-J8xLz7q2OFulZ2cyGTLE1TbbZcjpno7FaN6zdJNrgAdrJ+DZzh/uFR6YrTb4C+nXakvud8Q4+rbhoIWlYQbUFQ==}
+
   '@types/node@22.10.5':
     resolution: {integrity: sha512-F8Q+SeGimwOo86fiovQh8qiXfFEh2/ocYv7tU5pJ3EXMSSxk1Joj5wefpFK2fHTf/N6HKGSxIDBT9f3gCxXPkQ==}
 
@@ -833,8 +839,15 @@ packages:
   '@types/sockjs@0.3.36':
     resolution: {integrity: sha512-MK9V6NzAS1+Ud7JV9lJLFqW85VbC9dq3LmwZCuBe4wBDgKC0Kj/jd8Xl+nSviU+Qc3+m7umHHyHg//2KSa0a0Q==}
 
+  '@types/source-map@0.5.7':
+    resolution: {integrity: sha512-LrnsgZIfJaysFkv9rRJp4/uAyqw87oVed3s1hhF83nwbo9c7MG9g5DqR0seHP+lkX4ldmMrVolPjQSe2ZfD0yA==}
+    deprecated: This is a stub types definition for source-map (https://github.com/mozilla/source-map). source-map provides its own type definitions, so you don't need @types/source-map installed!
+
   '@types/web-bluetooth@0.0.20':
     resolution: {integrity: sha512-g9gZnnXVq7gM7v3tJCWV/qw7w+KeOlSHAhgF9RytFyifW6AF61hdT2ucrYhPq9hLs5JIryeupHV3qGk95dH9ow==}
+
+  '@types/ws@6.0.4':
+    resolution: {integrity: sha512-PpPrX7SZW9re6+Ha8ojZG4Se8AZXgf0GK6zmfqEuCsY49LFDNXO3SByp44X3dFEqtB73lkCDAdUazhAjVPiNwg==}
 
   '@types/ws@8.5.13':
     resolution: {integrity: sha512-osM/gWBTPKgHV8XkTunnegTRIsvF6owmf5w+JtAfOw472dptdm0dlGv4xCt6GwQRcC2XVOvvRE/0bAoQcL2QkA==}
@@ -1339,6 +1352,9 @@ packages:
     resolution: {integrity: sha512-oKnbhFyRIXpUuez8iBMmyEa4nbj4IOQyuhc/wy9kY7/WVPcwIO9VA668Pu8RkO7+0G76SLROeyw9CpQ061i4mA==}
     engines: {node: '>=10'}
 
+  chess-server@1.0.0:
+    resolution: {integrity: sha512-G4a62QwciXSHqG/pcpbt+dEsUbJKEZP7QJ7TC3S7EpVGE2kE+jig8t1oDNvqs/ghsTkN9e8zspF7kuFyIpl6yQ==}
+
   chess.js@0.10.3:
     resolution: {integrity: sha512-i51JgVM0ksFMbLJYKoDpfrcFxJHq/XQQx8NltCdfMyDv7vpU5JVzsZz1EOw7nA27eGA5t8tSxodAN+Wc704BoQ==}
 
@@ -1347,6 +1363,9 @@ packages:
 
   chessboardjs@0.0.1:
     resolution: {integrity: sha512-VK8mGqWQ4fk3rKre5T17F9yIxJRP/L+oS29zXL0nuhQfY3rAoKcdyPZziR2S7AfNhqPL45VmdhdspcAFR9CXww==}
+
+  chessground-live-messages@1.0.37:
+    resolution: {integrity: sha512-Ink4IvcQqnuFbbjhzgNEqWfGfIyh+kLsCfN8okO+97PIXRxDioKGXKnhJCN1wb1NGKMAWREA1bmafoqipaK4tA==}
 
   chessground@7.12.0:
     resolution: {integrity: sha512-MQG7c4Hsy1dCkMFFv4LTaRauVSmWF8/dukion1qLCh5pIcKyoa5onbmbglAdDXOYhBbAZVf1F289wy0DeDEBJQ==}
@@ -3679,6 +3698,10 @@ packages:
     resolution: {integrity: sha512-UjgapumWlbMhkBgzT7Ykc5YXUT46F0iKu8SGXq0bcwP5dz/h0Plj6enJqjz1Zbq2l5WaqYnrVbwWOWMyF3F47g==}
     engines: {node: '>=0.10.0'}
 
+  source-map@0.7.4:
+    resolution: {integrity: sha512-l3BikUxvPOcn5E74dZiq5BGsTb5yEwhaTSzccU6t4sDOH8NWJCstKO5QT2CvtFoK6F0saL7p9xHAqHOlCPJygA==}
+    engines: {node: '>= 8'}
+
   spdx-correct@3.2.0:
     resolution: {integrity: sha512-kN9dJbvnySHULIluDHy32WHRUu3Og7B9sbY7tsFLctQkIqnMh3hErYgdMjTYuqmcXX+lK5T1lnUt3G7zNswmZA==}
 
@@ -5188,6 +5211,8 @@ snapshots:
     dependencies:
       '@types/node': 22.10.5
 
+  '@types/node@12.20.55': {}
+
   '@types/node@22.10.5':
     dependencies:
       undici-types: 6.20.0
@@ -5221,7 +5246,15 @@ snapshots:
     dependencies:
       '@types/node': 22.10.5
 
+  '@types/source-map@0.5.7':
+    dependencies:
+      source-map: 0.7.4
+
   '@types/web-bluetooth@0.0.20': {}
+
+  '@types/ws@6.0.4':
+    dependencies:
+      '@types/node': 22.10.5
 
   '@types/ws@8.5.13':
     dependencies:
@@ -6082,11 +6115,27 @@ snapshots:
       ansi-styles: 4.3.0
       supports-color: 7.2.0
 
+  chess-server@1.0.0:
+    dependencies:
+      '@types/node': 12.20.55
+      '@types/ws': 6.0.4
+      chessground-live-messages: 1.0.37
+      ws: 7.5.10
+    transitivePeerDependencies:
+      - bufferutil
+      - utf-8-validate
+
   chess.js@0.10.3: {}
 
   chess.js@1.0.0-beta.8: {}
 
   chessboardjs@0.0.1: {}
+
+  chessground-live-messages@1.0.37:
+    dependencies:
+      '@types/node': 12.20.55
+      '@types/source-map': 0.5.7
+      source-map: 0.7.4
 
   chessground@7.12.0: {}
 
@@ -8335,6 +8384,8 @@ snapshots:
       source-map: 0.6.1
 
   source-map@0.6.1: {}
+
+  source-map@0.7.4: {}
 
   spdx-correct@3.2.0:
     dependencies:

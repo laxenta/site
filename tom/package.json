@@ -6,13 +6,13 @@
     "serve": "vue-cli-service serve",
     "build": "vue-cli-service build",
     "backend": "node server/index.js",
-    "serve": "vue-cli-service serve",
     "dev": "concurrently \"npm run backend\" \"npm run serve\"",
     "lint": "vue-cli-service lint"
   },
   "dependencies": {
     "@vueuse/motion": "^2.2.6",
     "axios": "^1.7.9",
+    "chess-server": "^1.0.0",
     "chess.js": "1.0.0-beta.8",
     "chessboardjs": "0.0.1",
     "concurrently": "^9.1.2",

@@ -9,8 +9,6 @@
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10v4m0 0a4 4 0 004 4h2l4 4V6L9 10H7a4 4 0 00-4 4z" />
       </svg>
     </button>
-
-    <!-- Hidden Audio Element -->
     <audio ref="audio" :src="audioSrc" loop></audio>
   </div>
 </template>
@@ -20,8 +18,8 @@ export default {
   name: "BackgroundAudio",
   data() {
     return {
-      audioSrc: require('@/assets/sounds/output.mp3'), // Ensure correct file path
-      isMuted: false, // Default to not muted
+      audioSrc: require('@/assets/sounds/output.mp3'),
+      isMuted: false,
     };
   },
   mounted() {

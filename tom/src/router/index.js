@@ -21,7 +21,16 @@ const routes = [
     name: 'ViewsProgress',
     component: () => import('../views/singing/SingingHome.vue')
   },
-
+  {
+    path: '/chesshome',
+    name: 'ChessHome',
+    component: () => import('../views/chess/ChessHome.vue')
+  },
+  {
+    path: '/puzzles',
+    name: 'ChessPuzzles',
+    component: () => import('../views/chess/ChessPuzzles.vue')
+  }
 ]
 
 const router = createRouter({

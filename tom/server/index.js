@@ -4,24 +4,21 @@ const path = require('path');
 const chessServer = require('./chess-server');
 
 const app = express();
-const port = process.env.PORT || 5030; // Change the port to 5000 (or any port you prefer)
+const port = process.env.PORT || 5030; //if u read this yr gay : 3
 const server = app.listen(port, () => {
     console.log(`Chess server running on port ${port}`);
   });
   
 // Middleware
 app.use(cors({
-  origin: 'http://localhost:8080', // Your Vue dev server
+  origin: 'http://localhost:8080',
   credentials: true
 }));
 app.use(express.json());
-
-// Initialize chess puzzles
 chessServer.loadPuzzles()
   .then(() => console.log('Chess puzzles loaded successfully'))
   .catch(err => console.error('Failed to load chess puzzles:', err));
 
-// Routes
 app.post('/api/chess/new-puzzle', async (req, res) => {
   try {
     const { playerId, targetRating } = req.body;
@@ -96,7 +93,6 @@ app.get('/api/chess/stats/:playerId', async (req, res) => {
   }
 });
 
-// Error handling middleware
 app.use((err, req, res, next) => {
   console.error(err.stack);
   res.status(500).json({
@@ -104,18 +100,13 @@ app.use((err, req, res, next) => {
     message: err.message
   });
 });
-
-// Handle 404
 app.use((req, res) => {
   res.status(404).json({ error: 'Route not found' });
 });
 
-// Start server
 app.listen(port, () => {
   console.log(`Chess server running on port ${port}`);
 });
-
-// Graceful shutdown
 process.on('SIGTERM', () => {
   console.log('SIGTERM signal received: closing HTTP server');
   server.close(() => {

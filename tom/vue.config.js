@@ -13,7 +13,6 @@ module.exports = defineConfig({
       }
     },
     webSocketServer: {
-      // Enable WSS in dev server
       type: 'ws',
       options: {
         path: '/ws'

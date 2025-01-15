@@ -1,6 +1,6 @@
 <template>
   <div>
-    <h1>Chess Home</h1>
+    <h1>I add placeholder : 3 Chess Home</h1>
   </div>
 </template>
 

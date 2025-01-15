@@ -1,14 +1,9 @@
 <template>
   <div class="home">
-    <!-- Hero Section with Dynamic Background -->
     <section class="hero">
-      <!-- Animated Background Layers -->
       <div class="hero-background">
-        <!-- Particle GIF Background -->
         <div class="particle-background"></div>
-        <!-- Dynamic Gradient Overlay -->
         <div class="gradient-overlay"></div>
-        <!-- Animated Dots -->
         <div v-for="n in 50" :key="n" 
              :style="getRandomParticleStyle(n)"
              class="floating-particle">
@@ -45,7 +40,7 @@
       </div>
     </section>
 
-  <!-- Skills Grid -->
+  <!-- Skills Grid : 3 -->
 <section class="features">
   <h2 class="section-title animate-slide-up">Featured Skills</h2>
   <div class="skills-grid">
@@ -61,7 +56,6 @@
       <div class="overlay-content">
         <span class="difficulty">{{ skill.difficulty }}</span>
         <span class="duration">{{ skill.duration }}</span>
-        <!-- New Hover Message with SVG -->
         <div class="hover-message">
           <svg class="hover-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
@@ -138,14 +132,14 @@ export default {
     };
   },
   computed: {
-    // Add computed properties for better performance
+    // Add computed properties for better performance, fr  : 3
     skillsCount() {
       return this.skills.length;
     }
   },
   methods: {
     navigateTo(route) {
-      if (!route) return; // Add validation
+      if (!route) return; 
       this.$router.push(route);
     },
     getCardColor(index) {
@@ -167,13 +161,11 @@ export default {
         animationDuration: `${randomDuration}s`
       };
     },
-    // Helper method for generating random numbers
     getRandomNumber(min, max, offset = 0) {
       return ((Math.random() * (max - min) + offset) % (max - min)) + min;
     }
   },
   created() {
-    // Validate data on component creation
     if (!Array.isArray(this.skills)) {
       console.error('Skills data is not properly initialized');
     }
@@ -182,7 +174,6 @@ export default {
 </script>
 
 <style scoped>
-/* Theme Variables */
 :root {
   --bg-primary: #0f172a;
   --bg-secondary: #1e293b;
@@ -192,16 +183,14 @@ export default {
   --text-secondary: #94a3b8;
 }
 
-/* Base Styles */
 .home {
   min-height: 100vh;
   background-color: #1a1a1a;
   color: var(--text-primary);
 }
 
-/* Hero Section */
 .hero {
-  height: 100vh; /* Full viewport height */
+  height: 100vh; /* Full viewport height :3 */
   min-height: 100vh; /* Ensure it doesn't collapse */
   display: flex; /* Flexbox for centering */
   flex-direction: column; /* Stack content vertically */
@@ -209,11 +198,10 @@ export default {
   justify-content: center; /* Center vertically */
   position: relative; /* Keep it positioned for child layers */
   overflow: hidden; /* Hide overflowing particles or animations */
-  scroll-snap-align: start; /* Enable snap scrolling if desired */
+  scroll-snap-align: start; /* Beloved snap scrolling if */
 }
 
 
-/* Background Elements */
 .hero-background {
   position: absolute;
   inset: 0;
@@ -240,7 +228,6 @@ export default {
   mix-blend-mode: overlay;
 }
 
-/* Floating Particles */
 .floating-particle {
   position: absolute;
   width: 6px;
@@ -374,7 +361,6 @@ export default {
   }
 }
 
-/* Skills Grid */
 .features {
   padding: 6rem 2rem;
   max-width: 1200px;
@@ -398,7 +384,6 @@ export default {
   gap: 2.5rem;
 }
 
-/* Card Styles */
 .skill-card {
   background: var(--bg-secondary);
   border-radius: 1.5rem;
@@ -516,7 +501,6 @@ export default {
   }
 }
 
-/* Card Hover Effects */
 .card-image-container {
   position: relative;
   height: 220px;
@@ -592,7 +576,6 @@ export default {
   }
 }
 
-/* Add color classes for different backgrounds */
 .bg-color-1 {
   background: linear-gradient(to right, #04ffe2, #0015ff);
 }
@@ -609,13 +592,12 @@ export default {
   background: linear-gradient(to right, #03d8ec, #000000);
 }
 
-/* Retain the transition for hover effects */
 .skill-card {
   border-radius: 1.5rem;
   overflow: hidden;
   transition: transform 0.3s ease, box-shadow 0.3s ease;
   cursor: pointer;
-  color: white; /* Ensure text is visible on colorful backgrounds */
+  color: white; 
 }
 
 .skill-card:hover {
@@ -628,7 +610,7 @@ html {
 }
 
 .hero {
-  scroll-snap-align: start; /* Ensure the section snaps to view */
+  scroll-snap-align: start; 
 }
 
 </style>

@@ -1,12 +1,10 @@
 const { Chess } = require('chess.js');
 const fs = require('fs');
 const csv = require('csv-parser');
-const { v4: uuidv4 } = require('uuid'); // For unique IDs
-
-// Chess piece Unicode representations
+const { v4: uuidv4 } = require('uuid');
 const PIECE_UNICODE = {
     'w': {
-        'k': '♔', // White King
+        'k': '♔', // White King : 3
         'q': '♕', // White Queen
         'r': '♖', // White Rook
         'b': '♗', // White Bishop
@@ -19,25 +17,21 @@ const PIECE_UNICODE = {
         'r': '♜', // Black Rook
         'b': '♝', // Black Bishop
         'n': '♞', // Black Knight
-        'p': '♟'  // Black Pawn
+        'p': '♟'  // Big black mommy
     }
 };
 
-// Game state storage
 const games = {};
 let puzzles = [];
 
-// Puzzle tracking for users
 const userPuzzleStats = {};
 
-// Load and process puzzles from CSV
 const loadPuzzles = () => {
     return new Promise((resolve, reject) => {
         const puzzleData = [];
         fs.createReadStream('/workspaces/a-cool-lil-site/tom/src/assets/lichess_db_puzzle.csv')
             .pipe(csv())
             .on('data', (data) => {
-                // Process and structure puzzle data
                 const processedPuzzle = {
                     id: data.PuzzleId || uuidv4(),
                     fen: data.FEN,
@@ -58,9 +52,7 @@ const loadPuzzles = () => {
     });
 };
 
-// Create new puzzle game with difficulty matching
 const createNewPuzzleGame = (playerId, targetRating = 1500) => {
-  // Filter puzzles close to target rating
   const ratingRange = 100;
   const eligiblePuzzles = puzzles.filter(puzzle => 
       Math.abs(puzzle.rating - targetRating) <= ratingRange
@@ -91,7 +83,6 @@ const createNewPuzzleGame = (playerId, targetRating = 1500) => {
   };
 };
 
-// Handle move and verify against puzzle solution
 const handleMove = (gameId, from, to, promotion = 'q') => {
   const game = games[gameId];
   if (!game) throw new Error('Game not found');
@@ -101,12 +92,10 @@ const handleMove = (gameId, from, to, promotion = 'q') => {
 
   game.attempts++;
   
-  // Check if move matches puzzle solution
   const expectedMove = game.puzzle.moves[game.currentMoveIndex];
   const isCorrectMove = moveToString(move) === expectedMove;
 
   if (!isCorrectMove) {
-      // Reset position on wrong move
       game.chess.undo();
       return {
           isCorrect: false,
@@ -119,14 +108,12 @@ const handleMove = (gameId, from, to, promotion = 'q') => {
 
   game.currentMoveIndex++;
   
-  // Make opponent's move if not puzzle completed
   if (game.currentMoveIndex < game.puzzle.moves.length) {
       const opponentMove = game.puzzle.moves[game.currentMoveIndex];
       game.chess.move(opponentMove);
       game.currentMoveIndex++;
     }
 
-    // Check if puzzle is completed
     const isPuzzleCompleted = game.currentMoveIndex >= game.puzzle.moves.length;
     if (isPuzzleCompleted) {
         game.completed = true;
@@ -145,12 +132,10 @@ const handleMove = (gameId, from, to, promotion = 'q') => {
     };
 };
 
-// Convert move object to string notation
 const moveToString = (move) => {
     return `${move.from}${move.to}${move.promotion || ''}`;
 };
 
-// Get Unicode representation of current board
 const getUnicodePieces = (board) => {
     return board.map(row => 
         row.map(square => 
@@ -159,7 +144,6 @@ const getUnicodePieces = (board) => {
     );
 };
 
-// Get available legal moves for a position
 const getLegalMoves = (gameId, square) => {
     const game = games[gameId];
     if (!game) throw new Error('Game not found');
@@ -173,7 +157,6 @@ const getLegalMoves = (gameId, square) => {
     }));
 };
 
-// Get detailed game state
 const getGameState = (gameId) => {
     const game = games[gameId];
     if (!game) throw new Error('Game not found');
@@ -192,7 +175,6 @@ const getGameState = (gameId) => {
     };
 };
 
-// Update user statistics
 const updateUserStats = (playerId, game) => {
     if (!userPuzzleStats[playerId]) {
       userPuzzleStats[playerId] = {
@@ -213,7 +195,6 @@ stats.averageAttempts = (
 );
 };
 
-// Get user statistics
 const getUserStats = (playerId) => {
 return userPuzzleStats[playerId] || {
     totalPuzzles: 0,
@@ -223,7 +204,6 @@ return userPuzzleStats[playerId] || {
 };
 };
 
-// Hint system
 const getHint = (gameId) => {
 const game = games[gameId];
 if (!game || game.completed) throw new Error('Game not found or completed');
@@ -235,10 +215,9 @@ return {
 };
 };
 
-// Clean up completed games
 const cleanupGames = () => {
 const now = Date.now();
-const expirationTime = 30 * 60 * 1000; // 30 minutes
+const expirationTime = 30 * 60 * 1000;
 
 Object.keys(games).forEach(gameId => {
     if (now - games[gameId].startTime > expirationTime) {

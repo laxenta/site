@@ -20,6 +20,7 @@
     "cors": "2.8.5",
     "csv-parser": "3.1.0",
     "express": "4.21.2",
+    "lite-youtube-embed": "^0.3.3",
     "path-browserify": "1.0.1",
     "stream-browserify": "3.0.0",
     "tone": "^15.0.4",

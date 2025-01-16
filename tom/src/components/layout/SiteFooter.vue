@@ -1,14 +1,16 @@
 <template>
   <footer class="footer">
-    <img
-      src="https://i.pinimg.com/originals/6a/cd/07/6acd0780a4c693b2cf8da52b5c44b18e.gif"
-      alt="Animated Chess GIF"
-      class="footer-bg"
-    />
+    <div class="footer-bg-container">
+      <video v-if="isVideoBackground" autoplay loop muted playsinline class="footer-bg">
+        <source :src="backgroundUrl" type="video/mp4">
+      </video>
+      <img v-else :src="backgroundUrl" alt="Footer Background" class="footer-bg" />
+    </div>
+    
     <div class="footer-overlay">
       <div class="footer-grid">
         <div class="footer-section">
-          <h3>Skills Hub</h3>
+          <h3>Your mom</h3>
           <p>Learn and master chess skills</p>
         </div>
         <div class="footer-section">
@@ -33,6 +35,24 @@
     </div>
   </footer>
 </template>
+<script>
+export default {
+  name: "SiteFooter",
+  data() {
+    return {
+      backgroundUrl: 'https://cdn.pixabay.com/video/2023/07/13/171429-845465112_tiny.mp4',
+    };
+  },
+  computed: {
+    isVideoBackground() {
+      const videoExtensions = ['mp4', 'webm', 'ogg'];
+      const extension = this.backgroundUrl.split('.').pop().toLowerCase();
+      return videoExtensions.includes(extension);
+    }
+  }
+};
+</script>
+
 <style scoped>
 .footer {
   position: relative;
@@ -45,29 +65,32 @@
   font-family: 'Arial', sans-serif;
 }
 
-/* GIF Background Styling */
-.footer-bg {
+.footer-bg-container {
   position: absolute;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
-  object-fit: cover;
   z-index: 0;
+  overflow: hidden;
+}
+
+.footer-bg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
   filter: brightness(50%);
 }
 
-/* Overlay Content */
 .footer-overlay {
   position: relative;
   z-index: 1;
   text-align: center;
-  color: #fff; /* Plain white text */
+  color: #fff;
   padding: var(--spacing-md);
   width: 100%;
 }
 
-/* Grid Layout for Text Distribution */
 .footer-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -76,7 +99,6 @@
   align-items: center;
 }
 
-/* Footer Section Styling */
 .footer-section {
   display: flex;
   flex-direction: column;
@@ -88,7 +110,7 @@
 .footer-section h4,
 .footer-section p {
   margin: 0;
-  color: #ffffff; /* Ensure text is plain white */
+  color: #ffffff;
   font-weight: normal;
 }
 
@@ -106,7 +128,6 @@
   margin-right: 5px;
 }
 
-/* Responsive Adjustments */
 @media (max-width: 768px) {
   .footer {
     height: 180px;

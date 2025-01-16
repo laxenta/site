@@ -75,7 +75,7 @@
         <iframe
           v-if="selectedVideo"
           width="100%"
-          height="500"
+          height="800"
           :src="selectedVideo.embedUrl + '?autoplay=1'"
           :title="selectedVideo.title"
           frameborder="0"
@@ -94,7 +94,7 @@ export default {
     return {
       showModal: false,
       selectedVideo: null,
-      backgroundUrl: 'https://cdn.pixabay.com/video/2024/03/13/204056-923134012_tiny.mp4',
+      backgroundUrl: 'https://cdn.pixabay.com/video/2024/05/22/213042_tiny.mp4',
       backgroundMediaType: 'video/mp4',
       videos: [
         {

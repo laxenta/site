@@ -1,8 +1,16 @@
 <template>
   <nav class="navbar" :class="{'collapsed': isCollapsed}" @mouseenter="expandNavbar" @mouseleave="collapseNavbar">
+    <!-- Background Media (Video or GIF) -->
+    <div class="navbar-background">
+      <video v-if="isVideoBackground" autoplay loop muted playsinline class="background-media">
+        <source :src="backgroundUrl" type="video/mp4">
+      </video>
+      <img v-else :src="backgroundUrl" alt="Navbar background" class="background-media" />
+    </div>
+    <!-- Collapse Button -->
     <div class="collapse-button" @click="toggleCollapse">
-      <span v-if="isCollapsed">></span>
-      <span v-else>|</span>
+      <span v-if="isCollapsed">🖳</span>
+      <span v-else>🌪</span>
     </div>
 
     <!-- Nav Links -->
@@ -66,13 +74,22 @@
     </ul>
   </nav>
 </template>
+
 <script>
 export default {
   name: "NavBar",
   data() {
     return {
       isCollapsed: true,
+      backgroundUrl: 'https://cdn.pixabay.com/video/2023/10/11/184548-873515844_tiny.mp4', 
     };
+  },
+  computed: {
+    isVideoBackground() {
+      const videoExtensions = ['mp4', 'webm', 'ogg'];
+      const extension = this.backgroundUrl.split('.').pop().toLowerCase();
+      return videoExtensions.includes(extension);
+    }
   },
   methods: {
     toggleCollapse() {
@@ -91,27 +108,43 @@ export default {
 </script>
 
 <style scoped>
-/* Navbar container :3 */
 .navbar {
   position: fixed;
   left: 10px;
   top: 50%;
   transform: translateY(-50%);
-  background: rgba(17, 24, 39, 0.9);
-  backdrop-filter: blur(8px);
-  padding: 0.8rem;
-  border-radius: 12px;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 
-              0 2px 4px -1px rgba(0, 0, 0, 0.06);
-  transition: width 0.5s ease, opacity 0.5s ease, transform 0.3s ease;
   width: 250px;
   z-index: 1000;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  backdrop-filter: blur(8px);
+  transition: width 0.5s ease, opacity 0.5s ease, transform 0.3s ease;
 }
 
 .navbar.collapsed {
   width: 50px;
   opacity: 0.5;
   transform: scale(0.95);
+}
+
+.navbar-background {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -1;
+  overflow: hidden;
+}
+.background-media {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .collapse-button {

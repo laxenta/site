@@ -1,0 +1,67 @@
+{
+  "name": "my-project",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "serve": "vue-cli-service serve",
+    "build": "vue-cli-service build",
+    "backend": "node server/index.js",
+    "dev": "concurrently \"npm run backend\" \"npm run serve\"",
+    "lint": "vue-cli-service lint"
+  },
+  "dependencies": {
+    "@vueuse/motion": "^2.2.6",
+    "axios": "^1.7.9",
+    "bcryptjs": "^2.4.3",
+    "chess-server": "^1.0.0",
+    "chess.js": "1.0.0-beta.8",
+    "chessboardjs": "0.0.1",
+    "concurrently": "^9.1.2",
+    "core-js": "^3.8.3",
+    "cors": "2.8.5",
+    "csv-parser": "3.1.0",
+    "express": "4.21.2",
+    "jsonwebtoken": "^9.0.2",
+    "lite-youtube-embed": "^0.3.3",
+    "mongoose": "^8.9.5",
+    "path-browserify": "1.0.1",
+    "socket.io": "^4.8.1",
+    "stream-browserify": "3.0.0",
+    "tone": "^15.0.4",
+    "util": "0.12.5",
+    "uuid": "11.0.5",
+    "vue": "^3.5.13",
+    "vue-chessboard": "^0.6.7",
+    "vue-router": "^4.5.0",
+    "vuex": "^4.1.0"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.12.16",
+    "@babel/eslint-parser": "^7.12.16",
+    "@vue/cli-plugin-babel": "~5.0.8",
+    "@vue/cli-plugin-eslint": "~5.0.8",
+    "@vue/cli-service": "~5.0.8",
+    "eslint": "^7.32.0",
+    "eslint-plugin-vue": "^8.0.3",
+    "vue-template-compiler": "^2.6.14"
+  },
+  "eslintConfig": {
+    "root": true,
+    "env": {
+      "node": true
+    },
+    "extends": [
+      "plugin:vue/essential",
+      "eslint:recommended"
+    ],
+    "parserOptions": {
+      "parser": "@babel/eslint-parser"
+    },
+    "rules": {}
+  },
+  "browserslist": [
+    "> 1%",
+    "last 2 versions",
+    "not dead"
+  ]
+}

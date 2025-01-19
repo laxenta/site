@@ -49,7 +49,7 @@ const parseFENToUnicodeBoard = (fen) => {
 const loadPuzzles = () => {
     return new Promise((resolve, reject) => {
         const puzzleData = [];
-        fs.createReadStream('/workspaces/a-cool-lil-site/tom/src/assets/lichess_db_puzzle.csv')
+        fs.createReadStream('./src/assets/lichess_db_puzzle.csv')
             .pipe(csv())
             .on('data', (data) => {
                 const processedPuzzle = {

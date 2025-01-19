@@ -11,8 +11,8 @@
 </template>
 
 <script>
-import NavbarBar from '/workspaces/a-cool-lil-site/tom/src/components/layout/NavBar.vue';
-import SiteFooter from '/workspaces/a-cool-lil-site/tom/src/components/layout/SiteFooter.vue';
+import NavbarBar from './components/layout/NavBar.vue';
+import SiteFooter from './components/layout/SiteFooter.vue';
 import BackgroundAudio from './components/layout/BackgroundAudio.vue';
 
 export default {

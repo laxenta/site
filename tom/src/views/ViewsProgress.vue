@@ -18,7 +18,7 @@
 import LessonCard from "../components/shared/LessonCard.vue";
 
 export default {
-  name: "ViewsHome",
+  name: "ViewsProgress",
   components: {
     LessonCard,
   },

@@ -26,6 +26,26 @@ let puzzles = [];
 
 const userPuzzleStats = {};
 
+const parseFENToUnicodeBoard = (fen) => {
+    const rows = fen.split(' ')[0].split('/');
+    return rows.map(row => {
+        let expandedRow = '';
+        for (let char of row) {
+            if (isNaN(char)) {
+                expandedRow += char;
+            } else {
+                expandedRow += ' '.repeat(parseInt(char));
+            }
+        }
+        return expandedRow.split('').map(piece => {
+            if (piece === ' ') return ' ';
+            const color = piece.toUpperCase() === piece ? 'w' : 'b';
+            const type = piece.toLowerCase();
+            return PIECE_UNICODE[color][type];
+        });
+    });
+};
+
 const loadPuzzles = () => {
     return new Promise((resolve, reject) => {
         const puzzleData = [];
@@ -35,6 +55,7 @@ const loadPuzzles = () => {
                 const processedPuzzle = {
                     id: data.PuzzleId || uuidv4(),
                     fen: data.FEN,
+                    board: parseFENToUnicodeBoard(data.FEN),
                     moves: data.Moves.split(' '),
                     rating: parseInt(data.Rating) || 1500,
                     themes: data.Themes ? data.Themes.split(' ') : [],
@@ -44,7 +65,7 @@ const loadPuzzles = () => {
                 puzzleData.push(processedPuzzle);
             })
             .on('end', () => {
-                puzzles = puzzleData;
+                puzzles.push(...puzzleData);
                 console.log(`Loaded ${puzzles.length} puzzles successfully.`);
                 resolve(puzzles);
             })

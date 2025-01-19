@@ -10,11 +10,25 @@
 </template>
 
 <script>
-// Import chessboardjs if using npm
-import Chessboard from 'chessboardjs'; // Add this line
-
-import chessService from '@/services/chess'; // Adjust the import based on your project structure
+import Chessboard from 'chessboardjs'; // Chessboard.js library
+import chessService from '@/services/chess'; // Adjust import to your project structure
 import { onMounted, ref } from 'vue';
+
+// Utility function to convert FEN to a board array
+const fenToBoardArray = (fen) => {
+  const rows = fen.split(' ')[0].split('/');
+  return rows.map(row => {
+    let expandedRow = '';
+    for (let char of row) {
+      if (isNaN(char)) {
+        expandedRow += char;
+      } else {
+        expandedRow += ' '.repeat(char);
+      }
+    }
+    return expandedRow.split('');
+  });
+};
 
 export default {
   name: 'ChessPuzzles',
@@ -23,7 +37,6 @@ export default {
     const message = ref('');
     const gameId = ref(null);
 
-    // Initialize the chessboard with Chessboard.js
     const initializeBoard = (fen = 'start') => {
       board.value = Chessboard('myBoard', {
         draggable: true,
@@ -33,20 +46,22 @@ export default {
       });
     };
 
-    // Fetch a new puzzle and set up the board
     const startNewPuzzle = async () => {
       try {
-        const puzzle = await chessService.createNewPuzzleGame('player1'); // Replace with actual player ID
+        const puzzle = await chessService.createNewPuzzleGame('player1'); // Use actual player ID
         gameId.value = puzzle.gameId;
         initializeBoard(puzzle.fen);
         message.value = '';
+
+        // Convert FEN to board array and log it
+        const boardArray = fenToBoardArray(puzzle.fen);
+        console.log('Board Array:', boardArray);
       } catch (error) {
         console.error('Error fetching new puzzle:', error);
         message.value = 'Failed to load new puzzle. Try again later.';
       }
     };
 
-    // Handle piece drop and validate the move
     const handleDrop = async (source, target) => {
       try {
         const moveResult = await chessService.handleMove(gameId.value, source, target);
@@ -64,7 +79,6 @@ export default {
       }
     };
 
-    // Reset the board to the current puzzle's initial position
     const resetBoard = async () => {
       try {
         const gameState = await chessService.getGameState(gameId.value);

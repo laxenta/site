@@ -1,15 +1,10 @@
 import axios from 'axios';
 
-const API_URL = 'http://localhost:3000/api/chess';
-
-export const PIECE_UNICODE = {
-  'k': '♔', 'q': '♕', 'r': '♖', 'b': '♗', 'n': '♘', 'p': '♙',
-  'K': '♚', 'Q': '♛', 'R': '♜', 'B': '♝', 'N': '♞', 'P': '♟'
-};
+const API_URL = 'http://localhost:5050/api'; // Ensure this points to your backend
 
 export const createNewPuzzleGame = async (playerId) => {
   try {
-    const response = await axios.post(`${API_URL}/new-puzzle`, { playerId });
+    const response = await axios.post(`${API_URL}/random`, { playerId });
     return response.data;
   } catch (error) {
     console.error('Error creating new puzzle:', error);
@@ -29,7 +24,7 @@ export const handleMove = async (gameId, from, to) => {
 
 export const getGameState = async (gameId) => {
   try {
-    const response = await axios.get(`${API_URL}/state/${gameId}`);
+    const response = await axios.get(`${API_URL}/game/${gameId}`);
     return response.data;
   } catch (error) {
     console.error('Error getting game state:', error);
@@ -41,7 +36,6 @@ const chessService = {
   createNewPuzzleGame,
   handleMove,
   getGameState,
-  PIECE_UNICODE
 };
 
 export default chessService;

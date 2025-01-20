@@ -5,10 +5,18 @@ const chessServer = require('./chess-server');
 const app = express();
 const port = process.env.PORT || 5050;
 
-// Allow CORS from any origin for public accessibility
-app.use(cors({
-    origin: "*", // For development; refine for production
-}));
+// Updated CORS configuration to allow the frontend without authorization
+app.use(
+  cors({
+    origin: 'https://cuddly-rotary-phone-q744jwxwpw9qfxvjx-5051.app.github.dev', // Frontend URL
+    methods: ['GET', 'POST', 'OPTIONS'],
+    allowedHeaders: ['Content-Type'],
+    credentials: false,
+  })
+);
+
+// Handle preflight OPTIONS requests
+app.options('*', cors());  // Explicitly handle preflight requests
 
 app.use(express.json());
 
@@ -54,7 +62,7 @@ app.post('/api/random', (req, res) => {
 
 // Root route
 app.get('/', (req, res) => {
-    console.log('[DEBUG] Handling GET /');
+    console.log('[DEBUG] Handling GET / works obviously lol');
     res.send('Welcome to the Chess Puzzle API! Use /api/random to get a random puzzle.');
 });
 

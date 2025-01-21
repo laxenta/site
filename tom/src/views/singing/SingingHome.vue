@@ -14,8 +14,6 @@
            :src="backgroundUrl" 
            alt="background">
     </div>
-
-    <!-- Existing Content -->
     <header class="singing-header">
       <h1 class="text-gradient">Music Time! 🎵</h1>
       <p class="subtitle">Find your next favorite song...</p>

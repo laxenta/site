@@ -15,12 +15,12 @@
     </template>
 
     <script>
-    import Chessboard from 'chessboardjs'; // Chessboard.js library
-    //import chessService from '@/services/chess';
+    import Chessboard from 'chessboardjs'; // see first we import chessboard.js library
+    //,import chessService from '@/services/chess';
     import { onMounted, ref } from 'vue';
     import { PIECE_UNICODE, generateRandomPuzzle, isValidMove, getGameState  } from '/workspaces/site/tom/server/chess-server.js'; // Import Unicode pieces
 
-    // Utility function to convert FEN to a board array
+    // utility function to convert FEN to a board array, i mean its duplicate , just writting for refrence, duplicated in chess-server.js 
     const fenToBoardArray = (fen) => {
       const rows = fen.split(' ')[0].split('/');
       return rows.map(row => {

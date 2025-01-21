@@ -17,6 +17,11 @@ const routes = [
     component: () => import('../views/singing/SingingHome.vue')
   },
   {
+    path: '/singing/vocal',
+    name: 'VocalTraining',
+    component: () => import('../views/singing/VocalPage.vue')
+  },
+  {
     path: '/progress',
     name: 'ViewsProgress',
     component: () => import('../views/ViewsProgress.vue')

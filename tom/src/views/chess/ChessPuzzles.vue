@@ -1,167 +1,289 @@
-    <template>
-      <div class="chess-puzzles">
-        <div id="myBoard" class="board-container"></div>
-        <div class="controls">
-          <button @click="startNewPuzzle">New Puzzle</button>
-          <button @click="resetBoard">Reset</button>
-        </div>
-        <div v-if="message" class="message">{{ message }}</div>
-        <div class="stats">
-          <p>Rating: {{ puzzleRating }}</p>
-          <p>Themes: {{ puzzleThemes.join(', ') }}</p>
-          <p>Solution: {{ puzzleSolution.join(', ') }}</p>
+<!-- ChessBoard.vue -->
+<template>
+  <div class="chess-container">
+    <div class="chess-board" :class="{ 'board-animated': isAnimated }">
+      <!-- Board coordinates -->
+      <div class="coordinates files">
+        <span v-for="file in files" :key="file">{{ file }}</span>
+      </div>
+      <div class="coordinates ranks">
+        <span v-for="rank in ranks" :key="rank">{{ rank }}</span>
+      </div>
+
+      <!-- Chess board squares and pieces -->
+      <div class="board">
+        <div v-for="(row, rankIndex) in boardMatrix" 
+             :key="rankIndex" 
+             class="board-row">
+          <div v-for="(square, fileIndex) in row" 
+               :key="`${rankIndex}-${fileIndex}`"
+               :class="[
+                 'square',
+                 getSquareColor(rankIndex, fileIndex),
+                 { 'square-selected': isSquareSelected(rankIndex, fileIndex) }
+               ]"
+               @click="handleSquareClick(rankIndex, fileIndex)">
+            <div v-if="square" 
+                 class="piece" 
+                 :class="{ 'piece-animated': isAnimated }"
+                 :style="getPieceStyle(square)">
+            </div>
+          </div>
         </div>
       </div>
-    </template>
+    </div>
 
-    <script>
-    import Chessboard from 'chessboardjs'; // see first we import chessboard.js library
-    //,import chessService from '@/services/chess';
-    import { onMounted, ref } from 'vue';
-    import { PIECE_UNICODE, generateRandomPuzzle, isValidMove, getGameState  } from '/workspaces/site/tom/server/chess-server.js'; // Import Unicode pieces
+    <!-- Game info panel -->
+    <div class="game-info">
+      <div class="puzzle-rating">Puzzle Rating: {{ puzzleRating }}</div>
+      <div class="move-status" :class="moveStatus.type">{{ moveStatus.message }}</div>
+    </div>
+  </div>
+</template>
 
-    // utility function to convert FEN to a board array, i mean its duplicate , just writting for refrence, duplicated in chess-server.js 
-    const fenToBoardArray = (fen) => {
-      const rows = fen.split(' ')[0].split('/');
-      return rows.map(row => {
-        let expandedRow = '';
+<script>
+export default {
+  name: 'ChessBoard',
+  data() {
+    return {
+      files: ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'],
+      ranks: ['8', '7', '6', '5', '4', '3', '2', '1'],
+      boardMatrix: [],
+      selectedSquare: null,
+      isAnimated: true,
+      puzzleRating: 0,
+      moveStatus: {
+        type: 'info',
+        message: 'Make your move'
+      },
+      pieceMap: {
+        'p': 'bP', 'n': 'bN', 'b': 'bB', 'r': 'bR', 'q': 'bQ', 'k': 'bK',
+        'P': 'wP', 'N': 'wN', 'B': 'wB', 'R': 'wR', 'Q': 'wQ', 'K': 'wK'
+      }
+    }
+  },
+  methods: {
+    initializeBoard(fen) {
+      const [position] = fen.split(' ');
+      const rows = position.split('/');
+      this.boardMatrix = rows.map(row => {
+        const squares = [];
         for (let char of row) {
           if (isNaN(char)) {
-            expandedRow += char;
+            squares.push(this.pieceMap[char]);
           } else {
-            expandedRow += ' '.repeat(char);
+            squares.push(...Array(parseInt(char)).fill(null));
           }
         }
-        return expandedRow.split('');
+        return squares;
       });
-    };
+    },
 
-    export default {
-      name: 'ChessPuzzles',
-      setup() {
-        const board = ref(null);
-        const message = ref('');
-        const gameId = ref(null);
-        const puzzleRating = ref(null);
-        const puzzleThemes = ref([]);
-        const puzzleSolution = ref([]);
-        const boardArray = ref([]);
+    getSquareColor(rankIndex, fileIndex) {
+      return (rankIndex + fileIndex) % 2 === 0 ? 'square-light' : 'square-dark';
+    },
 
-        // Function to initialize the board
-        const initializeBoard = (fen = 'start') => {
-          board.value = Chessboard('myBoard', {
-            draggable: true,
-            dropOffBoard: 'snapback',
-            position: fen,
-            onDrop: handleDrop,
-            pieceTheme: (piece) => {
-              const color = piece.color === 'w' ? 'White' : 'Black';
-              const unicodePiece = PIECE_UNICODE[color][piece.type];
-              return `<span class="chess-piece">${unicodePiece}</span>`;
-            }
-          });
+    getPieceStyle(piece) {
+      return {
+        backgroundImage: `url(${require(`@/assets/chesspieces/${piece}.png`)})`,
+      };
+    },
 
-          // Update the board array from the FEN
-          boardArray.value = fenToBoardArray(fen);
-        };
+    isSquareSelected(rankIndex, fileIndex) {
+      return this.selectedSquare && 
+             this.selectedSquare.rank === rankIndex && 
+             this.selectedSquare.file === fileIndex;
+    },
 
-        // Function to start a new puzzle
-        const startNewPuzzle = async () => {
-          try {
-            // Replace chessService.createNewPuzzleGame with a function that generates a random FEN
-            const puzzle = generateRandomPuzzle();
-            gameId.value = puzzle.gameId;
-            puzzleRating.value = puzzle.rating;
-            puzzleThemes.value = puzzle.themes;
-            puzzleSolution.value = puzzle.solution;
-            initializeBoard(puzzle.fen);
-            message.value = '';
-
-            // Convert FEN to board array and log it
-            const boardArray = fenToBoardArray(puzzle.fen);
-            console.log('Board Array:', boardArray);
-          } catch (error) {
-            console.error('Error fetching new puzzle:', error);
-            message.value = 'Failed to load new puzzle. Try again later.';
-          }
-        };
-
-        // Function to handle a move
-        const handleDrop = async (source, target) => {
-          try {
-            // Replace chessService.handleMove with a function that checks if the move is valid
-            const moveResult = isValidMove(source, target);
-            if (moveResult.isCorrect) {
-              board.value.position(moveResult.fen);
-              if (moveResult.isPuzzleCompleted) {
-                message.value = 'Puzzle Completed!';
-              }
-            } else {
-              message.value = moveResult.message;
-            }
-          } catch (error) {
-            console.error('Error handling move:', error);
-            message.value = 'Invalid move.';
-          }
-        };
-
-        // Function to reset the board
-        const resetBoard = async () => {
-          try {
-            // Replace chessService.getGameState with a function that gets the current state of the board
-            const gameState = getGameState();
-            board.value.position(gameState.fen);
-            message.value = '';
-          } catch (error) {
-            console.error('Error resetting board:', error);
-          }
-        };
-
-        // Initialize a new puzzle on mount
-        onMounted(startNewPuzzle);
-
-        return {
-          startNewPuzzle,
-          resetBoard,
-          message,
-          puzzleRating,
-          puzzleThemes,
-          puzzleSolution,
-          boardArray
-        };
+    handleSquareClick(rankIndex, fileIndex) {
+      if (!this.selectedSquare) {
+        if (this.boardMatrix[rankIndex][fileIndex]) {
+          this.selectedSquare = { rank: rankIndex, file: fileIndex };
+        }
+      } else {
+        // Handle move
+        const from = this.getSquareNotation(this.selectedSquare.rank, this.selectedSquare.file);
+        const to = this.getSquareNotation(rankIndex, fileIndex);
+        this.$emit('move', { from, to });
+        this.selectedSquare = null;
       }
-    };
-    </script>
+    },
 
+    getSquareNotation(rankIndex, fileIndex) {
+      return `${this.files[fileIndex]}${this.ranks[rankIndex]}`;
+    },
 
-    <style scoped>
-    .chess-puzzles {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      margin-top: 20px;
+    updateMoveStatus(status) {
+      this.moveStatus = status;
     }
-
-    .controls {
-      margin-top: 10px;
+  },
+  props: {
+    fen: {
+      type: String,
+      required: true
+    },
+    rating: {
+      type: Number,
+      default: 0
     }
-
-    .message {
-      margin-top: 10px;
-      color: green;
-      font-weight: bold;
+  },
+  watch: {
+    fen: {
+      immediate: true,
+      handler(newFen) {
+        this.initializeBoard(newFen);
+      }
+    },
+    rating: {
+      immediate: true,
+      handler(newRating) {
+        this.puzzleRating = newRating;
+      }
     }
+  }
+}
+</script>
 
-    .board-container {
-      width: 100%;
-      max-width: 400px;
-    }
+<style scoped>
+.chess-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px;
+  background-color: #f0f0f0;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
 
-    .stats {
-      margin-top: 10px;
-    }
+.chess-board {
+  position: relative;
+  width: 640px;
+  height: 640px;
+  margin: 20px;
+  background: #fff;
+  border-radius: 4px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
 
-    .chess-piece {
-      font-size: 3em; /* Adjust font size for piece visibility */
-    }
-    </style>
+.board {
+  position: absolute;
+  top: 30px;
+  left: 30px;
+  width: calc(100% - 60px);
+  height: calc(100% - 60px);
+}
+
+.coordinates {
+  position: absolute;
+  display: flex;
+  justify-content: space-around;
+  color: #666;
+  font-size: 14px;
+}
+
+.files {
+  bottom: 5px;
+  left: 30px;
+  right: 30px;
+}
+
+.ranks {
+  flex-direction: column;
+  top: 30px;
+  bottom: 30px;
+  left: 5px;
+}
+
+.board-row {
+  display: flex;
+  height: 12.5%;
+}
+
+.square {
+  width: 12.5%;
+  height: 100%;
+  position: relative;
+  transition: background-color 0.2s;
+}
+
+.square-light {
+  background-color: #f0d9b5;
+}
+
+.square-dark {
+  background-color: #b58863;
+}
+
+.square-selected {
+  background-color: rgba(155, 199, 0, 0.41);
+}
+
+.square:hover {
+  cursor: pointer;
+  box-shadow: inset 0 0 0 3px rgba(155, 199, 0, 0.75);
+}
+
+.piece {
+  width: 100%;
+  height: 100%;
+  background-size: contain;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+.piece-animated {
+  transition: transform 0.2s;
+}
+
+.piece-animated:hover {
+  transform: scale(1.1);
+}
+
+.game-info {
+  margin-top: 20px;
+  text-align: center;
+}
+
+.puzzle-rating {
+  font-size: 18px;
+  font-weight: bold;
+  color: #333;
+  margin-bottom: 10px;
+}
+
+.move-status {
+  padding: 8px 16px;
+  border-radius: 4px;
+  font-size: 16px;
+}
+
+.move-status.info {
+  background-color: #e3f2fd;
+  color: #1976d2;
+}
+
+.move-status.success {
+  background-color: #e8f5e9;
+  color: #2e7d32;
+}
+
+.move-status.error {
+  background-color: #ffebee;
+  color: #c62828;
+}
+
+.board-animated {
+  animation: boardAppear 0.5s ease-out;
+}
+
+@keyframes boardAppear {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+</style>

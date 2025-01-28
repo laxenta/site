@@ -47,7 +47,7 @@ const loadPuzzles = () => {
         const puzzleData = [];
         fs.createReadStream('/workspaces/site/tom/src/assets/lichess_db_puzzle.csv')
             .pipe(csv({
-                skipLines: 0, // Don't skip any lines
+                skipLines: 0,
                 headers: ['PuzzleId', 'FEN', 'Moves', 'Rating', 'RatingDeviation', 'Popularity', 'NbPlays', 'Themes', 'GameUrl']
             }))
             .on('data', (data) => {
@@ -58,13 +58,22 @@ const loadPuzzles = () => {
                             id: data.PuzzleId || uuidv4(),
                             fen: data.FEN,
                             board: parseFENToUnicodeBoard(data.FEN),
-                            moves: data.Moves.split(' ').filter(move => move.length > 0), // Remove empty moves
+                            moves: data.Moves.split(' ').filter(move => move.length > 0),
                             rating: parseInt(data.Rating) || 1500,
                             themes: data.Themes ? data.Themes.split(' ').filter(theme => theme.length > 0) : [],
-                            initialMove: data.InitialMove || null,
-                            solution: data.Solution ? data.Solution.split(' ').filter(move => move.length > 0) : []
+                            solution: data.Moves.split(' ').filter(move => move.length > 0)
                         };
                         puzzleData.push(processedPuzzle);
+
+                        // Add this after processing a puzzle
+                        if (puzzleData.length === 0 || puzzleData.length === 1) {
+                            console.log('Sample processed puzzle:', {
+                                id: processedPuzzle.id,
+                                fen: processedPuzzle.fen,
+                                moves: processedPuzzle.moves,  // Should be like ['f2g3', 'e6e7', 'b2b1', ...]
+                                solution: processedPuzzle.solution  // Same as moves
+                            });
+                        }
                     }
                 } catch (error) {
                     console.warn(`Skipping puzzle due to error: ${error.message}`);
@@ -78,7 +87,9 @@ const loadPuzzles = () => {
                     console.log('Sample puzzle:', {
                         id: puzzles[0].id,
                         fen: puzzles[0].fen,
-                        moves: puzzles[0].moves
+                        moves: puzzles[0].moves,
+                        solution: puzzles[0].solution  // Same as moves
+
                     });
                 }
                 resolve(puzzles);
@@ -89,6 +100,7 @@ const loadPuzzles = () => {
             });
     });
 };
+
 // Helper function to parse FEN to Unicode board
 const parseFENToUnicodeBoard = (fen) => {
     const rows = fen.split(' ')[0].split('/');
@@ -115,7 +127,7 @@ const parseFENToUnicodeBoard = (fen) => {
 const createNewPuzzleGame = (playerId, targetRating = 1500) => {
     try {
         const ratingRange = 100;
-        let eligiblePuzzles = puzzles.filter(puzzle => 
+        let eligiblePuzzles = puzzles.filter(puzzle =>
             Math.abs(puzzle.rating - targetRating) <= ratingRange
         );
 
@@ -235,8 +247,8 @@ const handleMove = (gameId, from, to, promotion = 'q') => {
 const moveToString = (move) => `${move.from}${move.to}${move.promotion || ''}`;
 
 const getUnicodePieces = (board) => {
-    return board.map(row => 
-        row.map(square => 
+    return board.map(row =>
+        row.map(square =>
             square ? PIECE_UNICODE[square.color][square.type] : ' '
         )
     );
@@ -246,12 +258,12 @@ const generateHints = (game) => {
     const currentPuzzleMove = game.puzzle.moves[game.currentMoveIndex];
     const fromSquare = currentPuzzleMove.substring(0, 2);
     const piece = game.chess.get(fromSquare);
-    
+
     return {
         pieceType: piece?.type,
         fromSquare,
         possibleSquares: game.chess.moves({ square: fromSquare, verbose: true })
-                             .map(move => move.to)
+            .map(move => move.to)
     };
 };
 
@@ -273,7 +285,7 @@ const updateUserStats = (playerId, game) => {
     stats.completedPuzzles++;
     stats.ratings.push(game.puzzle.rating);
     stats.averageAttempts = (
-        (stats.averageAttempts * (stats.completedPuzzles - 1) + game.attempts) / 
+        (stats.averageAttempts * (stats.completedPuzzles - 1) + game.attempts) /
         stats.completedPuzzles
     );
     stats.lastPlayed = new Date().toISOString();
@@ -298,8 +310,8 @@ const getUserStats = (playerId) => {
 
     return {
         ...stats,
-        averageRating: stats.ratings.length > 0 
-            ? stats.ratings.reduce((a, b) => a + b, 0) / stats.ratings.length 
+        averageRating: stats.ratings.length > 0
+            ? stats.ratings.reduce((a, b) => a + b, 0) / stats.ratings.length
             : 0
     };
 };

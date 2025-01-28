@@ -111,21 +111,27 @@ const parseFENToUnicodeBoard = (fen) => {
 };
 
 
-// Create a new puzzle game
+// Create a new puzzle game with a fallback to a random puzzle
 const createNewPuzzleGame = (playerId, targetRating = 1500) => {
     try {
         const ratingRange = 100;
-        const eligiblePuzzles = puzzles.filter(puzzle => 
+        let eligiblePuzzles = puzzles.filter(puzzle => 
             Math.abs(puzzle.rating - targetRating) <= ratingRange
         );
 
+        // If no puzzles found in the rating range, fallback to all puzzles
         if (eligiblePuzzles.length === 0) {
-            throw new ChessServerError('No puzzles found in rating range', 'NO_PUZZLES_FOUND');
+            console.warn('No puzzles found in the target rating range, selecting from all puzzles.');
+            eligiblePuzzles = puzzles;
+        }
+
+        if (eligiblePuzzles.length === 0) {
+            throw new ChessServerError('No puzzles available', 'NO_PUZZLES_FOUND');
         }
 
         const puzzle = eligiblePuzzles[Math.floor(Math.random() * eligiblePuzzles.length)];
         const chess = new Chess(puzzle.fen);
-        
+
         const gameId = uuidv4();
         games[gameId] = {
             chess,

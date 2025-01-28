@@ -45,68 +45,41 @@ const PUZZLE_EXPIRY_TIME = 30 * 60 * 1000; // 30 minutes
 const loadPuzzles = () => {
     return new Promise((resolve, reject) => {
         const puzzleData = [];
-        const BATCH_SIZE = 1000;
-        let currentBatch = [];
-
-        const processBatch = () => {
-            puzzles.push(...currentBatch);
-            currentBatch = [];
-        };
-
         fs.createReadStream('/workspaces/site/tom/src/assets/lichess_db_puzzle.csv')
             .pipe(csv({
-                headers: ['PuzzleId', 'FEN', 'Moves', 'Rating', 'RatingDeviation', 'Popularity', 'NbPlays', 'Themes', 'GameUrl'],
-                separator: ',',
-                skipLines: 0
+                skipLines: 0, // Don't skip any lines
+                headers: ['PuzzleId', 'FEN', 'Moves', 'Rating', 'RatingDeviation', 'Popularity', 'NbPlays', 'Themes', 'GameUrl']
             }))
             .on('data', (data) => {
                 try {
-                    // Validate and process puzzle data
-                    const chess = new Chess();
-                    if (!chess.load(data.FEN)) {
-                        console.warn(`Invalid FEN in puzzle ${data.PuzzleId}`);
-                        return;
-                    }
-
-                    // Process moves - split and clean
-                    const moves = data.Moves.trim().split(' ').filter(move => move.length > 0);
-
-                    const processedPuzzle = {
-                        id: data.PuzzleId,
-                        fen: data.FEN,
-                        board: parseFENToUnicodeBoard(data.FEN),
-                        moves: moves,
-                        rating: parseInt(data.Rating) || 1500,
-                        themes: data.Themes ? data.Themes.split(' ').filter(theme => theme.length > 0) : [],
-                        timeAdded: Date.now(),
-                        gameUrl: data.GameUrl,
-                        popularity: parseInt(data.Popularity) || 0,
-                        nbPlays: parseInt(data.NbPlays) || 0
-                    };
-
-                    // Validate puzzle has required fields
-                    if (!processedPuzzle.id || !processedPuzzle.fen || !processedPuzzle.moves.length) {
-                        console.warn(`Skipping incomplete puzzle: ${data.PuzzleId}`);
-                        return;
-                    }
-
-                    currentBatch.push(processedPuzzle);
-
-                    if (currentBatch.length >= BATCH_SIZE) {
-                        processBatch();
+                    // Only process if we have the minimum required data
+                    if (data.FEN && data.Moves) {
+                        const processedPuzzle = {
+                            id: data.PuzzleId || uuidv4(),
+                            fen: data.FEN,
+                            board: parseFENToUnicodeBoard(data.FEN),
+                            moves: data.Moves.split(' ').filter(move => move.length > 0), // Remove empty moves
+                            rating: parseInt(data.Rating) || 1500,
+                            themes: data.Themes ? data.Themes.split(' ').filter(theme => theme.length > 0) : [],
+                            initialMove: data.InitialMove || null,
+                            solution: data.Solution ? data.Solution.split(' ').filter(move => move.length > 0) : []
+                        };
+                        puzzleData.push(processedPuzzle);
                     }
                 } catch (error) {
-                    console.warn(`Error processing puzzle ${data.PuzzleId}: ${error.message}`);
+                    console.warn(`Skipping puzzle due to error: ${error.message}`);
                 }
             })
             .on('end', () => {
-                if (currentBatch.length > 0) {
-                    processBatch();
-                }
-                console.log(`Successfully loaded ${puzzles.length} puzzles`);
-                // Log a sample puzzle to verify format
+                puzzles.push(...puzzleData);
+                console.log(`Loaded ${puzzles.length} puzzles successfully.`);
+                // Log first puzzle as a sample to verify format
                 if (puzzles.length > 0) {
-                    console.log('Sample puzzle:', JSON.stringify(puzzles[0], null, 2));
+                    console.log('Sample puzzle:', {
+                        id: puzzles[0].id,
+                        fen: puzzles[0].fen,
+                        moves: puzzles[0].moves
+                    });
                 }
                 resolve(puzzles);
             })
@@ -116,7 +89,6 @@ const loadPuzzles = () => {
             });
     });
 };
-
 // Helper function to parse FEN to Unicode board
 const parseFENToUnicodeBoard = (fen) => {
     const rows = fen.split(' ')[0].split('/');

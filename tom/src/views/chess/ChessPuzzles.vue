@@ -60,59 +60,81 @@ export default {
         'p': 'bP', 'n': 'bN', 'b': 'bB', 'r': 'bR', 'q': 'bQ', 'k': 'bK',
         'P': 'wP', 'N': 'wN', 'B': 'wB', 'R': 'wR', 'Q': 'wQ', 'K': 'wK'
       }
-    }
+    };
   },
   methods: {
     initializeBoard(fen) {
-      const [position] = fen.split(' ');
-      const rows = position.split('/');
-      this.boardMatrix = rows.map(row => {
-        const squares = [];
-        for (let char of row) {
-          if (isNaN(char)) {
-            squares.push(this.pieceMap[char]);
-          } else {
-            squares.push(...Array(parseInt(char)).fill(null));
-          }
-        }
-        return squares;
-      });
-    },
+      if (!fen) {
+        console.warn('FEN is undefined or null, initializing empty board');
+        this.boardMatrix = Array(8).fill().map(() => Array(8).fill(null));
+        return;
+      }
 
+      try {
+        const [position] = fen.split(' ');
+        if (!position) {
+          throw new Error('Invalid FEN format');
+        }
+
+        const rows = position.split('/');
+        if (rows.length !== 8) {
+          throw new Error('Invalid number of ranks in FEN');
+        }
+
+        this.boardMatrix = rows.map(row => {
+          const squares = [];
+          for (const char of row) {
+            if (isNaN(char)) {
+              if (!this.pieceMap[char]) {
+                console.warn(`Unknown piece character: ${char}`);
+                squares.push(null);
+              } else {
+                squares.push(this.pieceMap[char]);
+              }
+            } else {
+              squares.push(...Array(parseInt(char)).fill(null));
+            }
+          }
+          return squares;
+        });
+      } catch (error) {
+        console.error('Error initializing board:', error.message);
+        this.boardMatrix = Array(8).fill().map(() => Array(8).fill(null));
+      }
+    },
     getSquareColor(rankIndex, fileIndex) {
       return (rankIndex + fileIndex) % 2 === 0 ? 'square-light' : 'square-dark';
     },
-
     getPieceStyle(piece) {
       return {
-        backgroundImage: `url(${require(`@/assets/chesspieces/${piece}.png`)})`,
+        backgroundImage: `url(${require(`@/assets/chesspieces/${piece}.png`)})`
       };
     },
-
     isSquareSelected(rankIndex, fileIndex) {
-      return this.selectedSquare && 
-             this.selectedSquare.rank === rankIndex && 
-             this.selectedSquare.file === fileIndex;
+      return (
+        this.selectedSquare &&
+        this.selectedSquare.rank === rankIndex &&
+        this.selectedSquare.file === fileIndex
+      );
     },
-
     handleSquareClick(rankIndex, fileIndex) {
       if (!this.selectedSquare) {
         if (this.boardMatrix[rankIndex][fileIndex]) {
           this.selectedSquare = { rank: rankIndex, file: fileIndex };
         }
       } else {
-        // Handle move
-        const from = this.getSquareNotation(this.selectedSquare.rank, this.selectedSquare.file);
+        const from = this.getSquareNotation(
+          this.selectedSquare.rank,
+          this.selectedSquare.file
+        );
         const to = this.getSquareNotation(rankIndex, fileIndex);
         this.$emit('move', { from, to });
         this.selectedSquare = null;
       }
     },
-
     getSquareNotation(rankIndex, fileIndex) {
       return `${this.files[fileIndex]}${this.ranks[rankIndex]}`;
     },
-
     updateMoveStatus(status) {
       this.moveStatus = status;
     }
@@ -120,12 +142,16 @@ export default {
   props: {
     fen: {
       type: String,
-      required: true
+      required: false,
+      default: '8/8/8/8/8/8/8/8 w - - 0 1' // Empty board FEN
     },
     rating: {
       type: Number,
       default: 0
     }
+  },
+  created() {
+    this.initializeBoard(this.fen);
   },
   watch: {
     fen: {
@@ -141,8 +167,9 @@ export default {
       }
     }
   }
-}
+};
 </script>
+
 
 <style scoped>
 .chess-container {

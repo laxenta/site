@@ -10,86 +10,122 @@
       </div>
     </div>
 
-    <!-- Chess board with drag and drop support -->
-    <div class="chess-board" 
-         :class="{ 'board-animated': isAnimated }"
-         @dragover.prevent
-         @drop="handleDrop">
-      <!-- Board coordinates -->
-      <div class="coordinates files">
-        <span v-for="file in files" :key="file">{{ file }}</span>
-      </div>
-      <div class="coordinates ranks">
-        <span v-for="rank in ranks" :key="rank">{{ rank }}</span>
+    <div class="board-and-analysis">
+      <!-- Chess board with drag and drop support -->
+      <div class="board-and-controls">
+        <div class="chess-board" 
+             :class="{ 'board-animated': isAnimated }"
+             @dragover.prevent
+             @drop="handleDrop">
+          <!-- Board coordinates -->
+          <div class="coordinates files">
+            <span v-for="file in files" :key="file">{{ file }}</span>
+          </div>
+          <div class="coordinates ranks">
+            <span v-for="rank in ranks" :key="rank">{{ rank }}</span>
+          </div>
+
+          <!-- Chess board squares and pieces -->
+          <div class="board">
+            <div v-for="(row, rankIndex) in boardMatrix" 
+                 :key="rankIndex" 
+                 class="board-row">
+              <div v-for="(square, fileIndex) in row" 
+                   :key="`${rankIndex}-${fileIndex}`"
+                   :class="[
+                     'square',
+                     getSquareColor(rankIndex, fileIndex),
+                     { 'square-selected': isSquareSelected(rankIndex, fileIndex) },
+                     { 'square-highlight': isHighlightedSquare(rankIndex, fileIndex) },
+                     { 'square-last-move': isLastMoveSquare(rankIndex, fileIndex) }
+                   ]"
+                   @click="handleSquareClick(rankIndex, fileIndex)"
+                   @dragover.prevent
+                   @drop="handleDrop($event, rankIndex, fileIndex)">
+                <div v-if="square" 
+                     class="piece" 
+                     :class="[
+                       { 'piece-animated': isAnimated },
+                       { 'piece-draggable': canDragPiece(rankIndex, fileIndex) }
+                     ]"
+                     :style="getPieceStyle(square)"
+                     draggable="true"
+                     @dragstart="handleDragStart($event, rankIndex, fileIndex)"
+                     @dragend="handleDragEnd">
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Game controls and status below the board -->
+        <div class="game-controls">
+          <div class="move-status" :class="moveStatus.type">
+            {{ moveStatus.message }}
+          </div>
+          <button class="control-btn new-puzzle" 
+                  @click="initializeBoardFromAPI"
+                  :disabled="isLoading">
+            New Puzzle
+          </button>
+          <button class="control-btn reset" 
+                  @click="resetPuzzle"
+                  :disabled="!gameId">
+            Reset
+          </button>
+        </div>
       </div>
 
-      <!-- Chess board squares and pieces -->
-      <div class="board">
-        <div v-for="(row, rankIndex) in boardMatrix" 
-             :key="rankIndex" 
-             class="board-row">
-          <div v-for="(square, fileIndex) in row" 
-               :key="`${rankIndex}-${fileIndex}`"
-               :class="[
-                 'square',
-                 getSquareColor(rankIndex, fileIndex),
-                 { 'square-selected': isSquareSelected(rankIndex, fileIndex) },
-                 { 'square-highlight': isHighlightedSquare(rankIndex, fileIndex) },
-                 { 'square-last-move': isLastMoveSquare(rankIndex, fileIndex) }
-               ]"
-               @click="handleSquareClick(rankIndex, fileIndex)"
-               @dragover.prevent
-               @drop="handleDrop($event, rankIndex, fileIndex)">
-            <div v-if="square" 
-                 class="piece" 
-                 :class="[
-                   { 'piece-animated': isAnimated },
-                   { 'piece-draggable': canDragPiece(rankIndex, fileIndex) }
-                 ]"
-                 :style="getPieceStyle(square)"
-                 draggable="true"
-                 @dragstart="handleDragStart($event, rankIndex, fileIndex)"
-                 @dragend="handleDragEnd">
+      <!-- Stockfish Analysis Panel -->
+      <div class="analysis-panel">
+        <div class="engine-status" v-if="!engineReady">
+          <div class="status-indicator">
+            Initializing Stockfish...
+          </div>
+        </div>
+        
+        <div class="engine-analysis" v-else>
+          <h3>Engine Analysis</h3>
+          <div class="evaluation-container">
+            <div class="evaluation-bar" :style="getEvaluationBarStyle()">
+              <div class="eval-value">{{ getEvaluationText() }}</div>
+            </div>
+          </div>
+          
+          <div class="analysis-info">
+            <div class="analyzing-status" v-if="isAnalyzing">
+              <div class="analyzing-spinner"></div>
+              Analyzing position...
+            </div>
+            <div class="best-move" v-if="bestMove && !isAnalyzing">
+              <span class="label">Best move:</span>
+              <span class="move">{{ bestMove }}</span>
             </div>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Game controls and status -->
-    <div class="game-controls">
-      <div class="move-status" :class="moveStatus.type">
-        {{ moveStatus.message }}
-      </div>
-      <button class="control-btn new-puzzle" 
-              @click="initializeBoardFromAPI"
-              :disabled="isLoading">
-        New Puzzle
-      </button>
-      <button class="control-btn reset" 
-              @click="resetPuzzle"
-              :disabled="!gameId">
-        Reset
-      </button>
-    </div>
-
-    <!-- Move history -->
+    <!-- Move history with analysis -->
     <div class="move-history" v-if="moveHistory.length">
-      <h3>Moves</h3>
+      <h3>Moves with Analysis</h3>
       <div class="moves-list">
         <span v-for="(move, index) in moveHistory" 
               :key="index"
-              :class="{ 'current-move': currentMoveIndex === index }">
+              :class="[
+                'move-entry',
+                { 'current-move': currentMoveIndex === index }
+              ]">
           {{ formatMove(move, index) }}
         </span>
       </div>
     </div>
   </div>
 </template>
-
  
 <script>
 import { Chess } from 'chess.js';
+import { Stockfish } from 'stockfish.js';
 
 const API_BASE_URL = 'https://cuddly-rotary-phone-q744jwxwpw9qfxvjx-5050.app.github.dev';
 
@@ -129,14 +165,31 @@ export default {
       lastMove: null,
       isLoading: false,
       highlightedSquares: new Set(),
+    // New Stockfish related data
+      stockfish: null,
+      engineDepth: 15, // Analysis depth
+      currentEvaluation: null,
+      isAnalyzing: false,
+      engineReady: false,
+      bestMove: null,
+      analysisHistory: [], // Store analysis for each position
     };
   },
 
   created() {
     this.chess = new Chess();
+    this.initializeStockfish();
     this.fetchUserStats();
     this.initializeBoardFromAPI();
   },
+
+
+  beforeDestroy() {
+    if (this.stockfish) {
+      this.stockfish.postMessage('quit');
+    }
+  },
+
 
   methods: {
     async fetchUserStats() {
@@ -191,6 +244,89 @@ export default {
       }
     },
 
+
+
+
+    initializeStockfish() {
+      this.stockfish = new Stockfish();
+      
+      this.stockfish.onmessage = (event) => {
+        this.handleStockfishMessage(event);
+      };
+
+      // Initialize engine with standard settings
+      this.stockfish.postMessage('uci');
+      this.stockfish.postMessage('isready');
+      this.stockfish.postMessage('ucinewgame');
+      this.stockfish.postMessage('setoption name MultiPV value 1');
+    },
+
+    // Handle Stockfish engine messages
+    handleStockfishMessage(event) {
+      const message = event.data;
+      
+      if (message === 'readyok') {
+        this.engineReady = true;
+      } 
+      else if (message.includes('bestmove')) {
+        this.isAnalyzing = false;
+        const bestMove = message.split(' ')[1]; // Fix: Remove array destructuring
+        this.bestMove = bestMove;
+      }
+      else if (message.includes('score cp')) {
+        // Parse evaluation score
+        const scoreMatch = message.match(/score cp ([-\d]+)/);
+        if (scoreMatch) {
+          const score = parseInt(scoreMatch[1]) / 100; // Convert centipawns to pawns
+          this.currentEvaluation = score;
+          
+          // Store analysis in history
+          if (this.moveHistory.length > 0) {
+            const lastMove = this.moveHistory[this.moveHistory.length - 1];
+            this.analysisHistory.push({
+              move: lastMove,
+              evaluation: score,
+              bestMove: this.bestMove
+            });
+          }
+        }
+      }
+    },
+
+    // Analyze current position
+    analyzePosition() {
+      if (!this.engineReady || this.isAnalyzing) return;
+      
+      this.isAnalyzing = true;
+      const fen = this.chess.fen();
+      
+      this.stockfish.postMessage('position fen ' + fen);
+      this.stockfish.postMessage('go depth ' + this.engineDepth);
+    },
+
+    // Get evaluation text
+    getEvaluationText() {
+      if (this.currentEvaluation === null) return 'Analyzing...';
+      
+      const score = Math.abs(this.currentEvaluation);
+      const color = this.currentEvaluation > 0 ? 'White' : 'Black';
+      
+      if (score > 5) {
+        return `${color} is winning (+${score.toFixed(1)})`;
+      } else if (score > 2) {
+        return `${color} has clear advantage (+${score.toFixed(1)})`;
+      } else if (score > 0.5) {
+        return `${color} is slightly better (+${score.toFixed(1)})`;
+      } else {
+        return 'Position is equal';
+      }
+    },
+
+
+
+
+
+
     initializeBoard(fen) {
       if (!fen) {
         this.boardMatrix = Array(8).fill().map(() => Array(8).fill(null));
@@ -212,7 +348,9 @@ export default {
         row.map(square => {
           if (!square) return null;
           const piece = square.type.toLowerCase();
+          // eslint-disable-next-line
           const color = square.color === 'w' ? 'w' : 'b';
+          // eslint-disable-next-line
           return this.pieceMap[square.color === 'w' ? piece.toUpperCase() : piece];
         })
       );
@@ -234,9 +372,17 @@ export default {
         this.updateBoardMatrix();
         
         // Record move
-        const moveRecord = { from, to };
+        const moveRecord = { 
+          from, 
+          to,
+          fen: this.chess.fen(),
+          evaluation: null // Will be updated by analysis
+        };
         this.moveHistory.push(moveRecord);
         this.lastMove = moveRecord;
+
+        // Start position analysis
+        this.analyzePosition();
 
         // Notify the API but don't wait for response
         fetch(`${this.apiBaseUrl}/api/puzzle/${this.gameId}/move`, {
@@ -254,6 +400,20 @@ export default {
         return false;
       }
     },
+
+        // Add evaluation to move formatting
+    formatMove(move, index) {
+      if (!move) return '';
+      const moveNumber = Math.floor(index / 2) + 1;
+      const isWhite = index % 2 === 0;
+      const analysis = this.analysisHistory[index];
+      const evalText = analysis ? ` (${analysis.evaluation.toFixed(1)})` : '';
+      
+      return isWhite 
+        ? `${moveNumber}. ${move.from}-${move.to}${evalText}` 
+        : `${move.from}-${move.to}${evalText}`;
+    },
+
 
     handleDragStart(event, rankIndex, fileIndex) {
       if (!this.canDragPiece(rankIndex, fileIndex)) {
@@ -359,14 +519,8 @@ export default {
       return this.highlightedSquares.has(square);
     },
 
-    formatMove(move, index) {
-      if (!move) return '';
-      const moveNumber = Math.floor(index / 2) + 1;
-      const isWhite = index % 2 === 0;
-      return isWhite 
-        ? `${moveNumber}. ${move.from}-${move.to}` 
-        : `${move.from}-${move.to}`;
-    },
+
+
 
     isLastMoveSquare(rankIndex, fileIndex) {
       if (!this.lastMove) return false;
@@ -408,6 +562,7 @@ export default {
     }
   }
 };
+
 </script>
 
 <style scoped>
@@ -416,26 +571,31 @@ export default {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 20px;
+  justify-content: start;
+  height: 300vh; /* Adjust height to approximately 3 viewports */
+  width: 100%;
   background: linear-gradient(to bottom right, #1e293b, #0f172a);
-  border-radius: 16px;
-  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.3);
-  max-width: 1000px;
-  margin: 30px auto;
   color: #e5e7eb;
+  position: relative;
+  overflow: hidden;
+  padding: 20px 0;
 }
 
+.board-and-controls {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 50px;
+}
 /* Chess Board Styling */
+
 .chess-board {
-  position: relative;
   width: 640px;
   height: 640px;
-  margin: 20px 0;
   background: #2a2a2a;
   border-radius: 12px;
   box-shadow: 0 10px 20px rgba(0, 0, 0, 0.4);
-  overflow: hidden;
-  animation: fadeIn 0.7s ease-out;
+  position: relative;
 }
 
 /* Smooth board entry animation */
@@ -520,6 +680,13 @@ export default {
   box-shadow: inset 0 0 0 3px #2a9d8f;
 }
 
+.game-controls {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  margin-top: 20px;
+}
+
 /* Highlighted legal move dots */
 .square-highlight::after {
   content: '';
@@ -542,9 +709,7 @@ export default {
   transition: transform 0.3s ease-in-out;
 }
 
-.piece-animated:hover {
-  transform: scale(1.15) rotate(5deg);
-}
+
 
 /* Game Header */
 .game-header {
@@ -592,8 +757,8 @@ export default {
   background: #4b5563;
   cursor: not-allowed;
 }
-
 /* Move Status */
+
 .move-status {
   padding: 12px 18px;
   border-radius: 6px;
@@ -664,6 +829,148 @@ export default {
   .control-btn {
     font-size: 14px;
     padding: 8px 16px;
+  }
+}
+
+
+/* Add these to your existing CSS */
+
+.board-and-analysis {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+  margin-bottom: 20px;
+}
+
+.analysis-panel {
+  width: 280px;
+  background: rgba(30, 41, 59, 0.8);
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.engine-status {
+  height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.status-indicator {
+  color: #60a5fa;
+  font-size: 16px;
+  text-align: center;
+}
+
+.engine-analysis h3 {
+  color: #f8fafc;
+  margin-bottom: 15px;
+  font-size: 18px;
+}
+
+.evaluation-container {
+  height: 200px;
+  background: #1e293b;
+  border-radius: 6px;
+  position: relative;
+  overflow: hidden;
+  margin-bottom: 15px;
+}
+
+.evaluation-bar {
+  position: absolute;
+  bottom: 0;
+  width: 100%;
+  background: linear-gradient(to bottom, #4ade80, #22c55e);
+  transition: height 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.eval-value {
+  color: #f8fafc;
+  font-size: 14px;
+  font-weight: bold;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+  padding: 4px 8px;
+}
+
+.analysis-info {
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 6px;
+}
+
+.analyzing-status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #60a5fa;
+  font-style: italic;
+}
+
+.analyzing-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid #60a5fa;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.best-move {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.best-move .label {
+  color: #94a3b8;
+}
+
+.best-move .move {
+  color: #4ade80;
+  font-weight: bold;
+}
+
+.move-entry {
+  display: inline-block;
+  padding: 4px 8px;
+  margin: 2px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.05);
+  transition: background-color 0.2s;
+}
+
+.move-entry:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.current-move {
+  background: #2563eb;
+  color: white;
+}
+
+/* Responsive Design */
+@media screen and (max-width: 1200px) {
+  .board-and-analysis {
+    flex-direction: column;
+  }
+
+  .analysis-panel {
+    width: 100%;
+    max-width: 640px;
+  }
+
+  .evaluation-container {
+    height: 100px;
   }
 }
 </style>

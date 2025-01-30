@@ -110,6 +110,16 @@ app.get('/', (req, res) => {
     });
 });
 
+// In your Express server file
+app.use((req, res, next) => {
+    if (req.url.endsWith('.wasm')) {
+      res.set('Content-Type', 'application/wasm', 'application/javascript');
+    }
+    res.set('Cross-Origin-Opener-Policy', 'cross-origin');
+    res.set('Cross-Origin-Embedder-Policy', 'require-corp');
+    next();
+  });
+
 // Error handlers
 app.use((req, res) => {
     console.log(`[DEBUG] 404 Not Found: ${req.method} ${req.url}`);

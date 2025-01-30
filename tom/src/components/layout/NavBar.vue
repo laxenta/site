@@ -81,7 +81,7 @@ export default {
   data() {
     return {
       isCollapsed: true,
-      backgroundUrl: 'https://cdn.pixabay.com/video/2023/10/11/184548-873515844_tiny.mp4', 
+      backgroundUrl: 'empty fr :3 ', 
     };
   },
   computed: {

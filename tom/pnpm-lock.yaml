@@ -62,6 +62,9 @@ importers:
       stockfish.js:
         specifier: ^10.0.2
         version: 10.0.2
+      stockfish.wasm:
+        specifier: ^0.10.0
+        version: 0.10.0
       stream-browserify:
         specifier: 3.0.0
         version: 3.0.0
@@ -102,6 +105,9 @@ importers:
       '@vue/cli-service':
         specifier: ~5.0.8
         version: 5.0.8(@vue/compiler-sfc@3.5.13)(lodash@4.17.21)(vue-template-compiler@2.7.16)(vue@3.5.13)(webpack-sources@3.2.3)
+      copy-webpack-plugin:
+        specifier: ^12.0.2
+        version: 12.0.2(webpack@5.97.1)
       eslint:
         specifier: ^7.32.0
         version: 7.32.0
@@ -1736,6 +1742,12 @@ packages:
   cookie@0.7.2:
     resolution: {integrity: sha512-yki5XnKuf750l50uGTllt6kKILY4nQ1eNIQatoXEByZ5dWgnKqbnqmTrBE5B4N7lrMJKQ2ytWMiTO2o0v6Ew/w==}
     engines: {node: '>= 0.6'}
+
+  copy-webpack-plugin@12.0.2:
+    resolution: {integrity: sha512-SNwdBeHyII+rWvee/bTnAYyO8vfVdcSTud4EIb6jcZ8inLeWucJE0DnxXQBjlQ5zlteuuvooGQy3LIyGxhvlOA==}
+    engines: {node: '>= 18.12.0'}
+    peerDependencies:
+      webpack: ^5.1.0
 
   copy-webpack-plugin@9.1.0:
     resolution: {integrity: sha512-rxnR7PaGigJzhqETHGmAcxKnLZSR5u1Y3/bcIv/1FnqXedcL/E2ewK7ZCNrArJKCiSv8yVXhTqetJh8inDvfsA==}
@@ -3929,6 +3941,9 @@ packages:
   stockfish.js@10.0.2:
     resolution: {integrity: sha512-treB3AYcdvRJ9SDPOyL0R2NcEAtQgG432nStfRzR4wzVELGQ6iVoeBHwvirHTfocNOTims7XNkK3SADaocsJmQ==}
 
+  stockfish.wasm@0.10.0:
+    resolution: {integrity: sha512-OTvOlz0ijCSmIb/YvOZ1Dn6vwZVS4Ge3N+RcV0d2b6LXUtCJ9UwmBHypRW3DZ+VXf8WNm7E3P+6jMTVvb3QaBg==}
+
   stockfish@16.0.0:
     resolution: {integrity: sha512-uu4AqsE2x0tD+SsYzZy4UtqeH4U9zDi1V8loDFDbMwCtvumGXF9j81Pg1ZmIkUgZhwQqPxQAv8IN5oy6hZa7Bw==}
     hasBin: true
@@ -5334,8 +5349,7 @@ snapshots:
 
   '@sideway/pinpoint@2.0.0': {}
 
-  '@sindresorhus/merge-streams@2.3.0':
-    optional: true
+  '@sindresorhus/merge-streams@2.3.0': {}
 
   '@socket.io/component-emitter@3.1.2': {}
 
@@ -6535,6 +6549,16 @@ snapshots:
 
   cookie@0.7.2: {}
 
+  copy-webpack-plugin@12.0.2(webpack@5.97.1):
+    dependencies:
+      fast-glob: 3.3.3
+      glob-parent: 6.0.2
+      globby: 14.0.2
+      normalize-path: 3.0.0
+      schema-utils: 4.3.0
+      serialize-javascript: 6.0.2
+      webpack: 5.97.1
+
   copy-webpack-plugin@9.1.0(webpack@5.97.1):
     dependencies:
       fast-glob: 3.3.3
@@ -7301,7 +7325,6 @@ snapshots:
       path-type: 5.0.0
       slash: 5.1.0
       unicorn-magic: 0.1.0
-    optional: true
 
   gopd@1.2.0: {}
 
@@ -8118,8 +8141,7 @@ snapshots:
 
   path-type@4.0.0: {}
 
-  path-type@5.0.0:
-    optional: true
+  path-type@5.0.0: {}
 
   pathe@1.1.2:
     optional: true
@@ -8708,8 +8730,7 @@ snapshots:
 
   slash@3.0.0: {}
 
-  slash@5.1.0:
-    optional: true
+  slash@5.1.0: {}
 
   slice-ansi@4.0.0:
     dependencies:
@@ -8827,6 +8848,8 @@ snapshots:
     optional: true
 
   stockfish.js@10.0.2: {}
+
+  stockfish.wasm@0.10.0: {}
 
   stockfish@16.0.0: {}
 
@@ -9036,8 +9059,7 @@ snapshots:
 
   unicode-property-aliases-ecmascript@2.1.0: {}
 
-  unicorn-magic@0.1.0:
-    optional: true
+  unicorn-magic@0.1.0: {}
 
   unimport@3.14.5:
     dependencies:

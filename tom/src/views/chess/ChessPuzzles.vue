@@ -13,10 +13,7 @@
     <div class="board-and-analysis">
       <!-- Chess board with drag and drop support -->
       <div class="board-and-controls">
-        <div class="chess-board" 
-             :class="{ 'board-animated': isAnimated }"
-             @dragover.prevent
-             @drop="handleDrop">
+        <div class="chess-board" :class="{ 'board-animated': isAnimated }" @dragover.prevent @drop="handleDrop">
           <!-- Board coordinates -->
           <div class="coordinates files">
             <span v-for="file in files" :key="file">{{ file }}</span>
@@ -27,31 +24,20 @@
 
           <!-- Chess board squares and pieces -->
           <div class="board">
-            <div v-for="(row, rankIndex) in boardMatrix" 
-                 :key="rankIndex" 
-                 class="board-row">
-              <div v-for="(square, fileIndex) in row" 
-                   :key="`${rankIndex}-${fileIndex}`"
-                   :class="[
-                     'square',
-                     getSquareColor(rankIndex, fileIndex),
-                     { 'square-selected': isSquareSelected(rankIndex, fileIndex) },
-                     { 'square-highlight': isHighlightedSquare(rankIndex, fileIndex) },
-                     { 'square-last-move': isLastMoveSquare(rankIndex, fileIndex) }
-                   ]"
-                   @click="handleSquareClick(rankIndex, fileIndex)"
-                   @dragover.prevent
-                   @drop="handleDrop($event, rankIndex, fileIndex)">
-                <div v-if="square" 
-                     class="piece" 
-                     :class="[
-                       { 'piece-animated': isAnimated },
-                       { 'piece-draggable': canDragPiece(rankIndex, fileIndex) }
-                     ]"
-                     :style="getPieceStyle(square)"
-                     draggable="true"
-                     @dragstart="handleDragStart($event, rankIndex, fileIndex)"
-                     @dragend="handleDragEnd">
+            <div v-for="(row, rankIndex) in boardMatrix" :key="rankIndex" class="board-row">
+              <div v-for="(square, fileIndex) in row" :key="`${rankIndex}-${fileIndex}`" :class="[
+                'square',
+                getSquareColor(rankIndex, fileIndex),
+                { 'square-selected': isSquareSelected(rankIndex, fileIndex) },
+                { 'square-highlight': isHighlightedSquare(rankIndex, fileIndex) },
+                { 'square-last-move': isLastMoveSquare(rankIndex, fileIndex) }
+              ]" @click="handleSquareClick(rankIndex, fileIndex)" @dragover.prevent
+                @drop="handleDrop($event, rankIndex, fileIndex)">
+                <div v-if="square" class="piece" :class="[
+                  { 'piece-animated': isAnimated },
+                  { 'piece-draggable': canDragPiece(rankIndex, fileIndex) }
+                ]" :style="getPieceStyle(square)" draggable="true"
+                  @dragstart="handleDragStart($event, rankIndex, fileIndex)" @dragend="handleDragEnd">
                 </div>
               </div>
             </div>
@@ -63,14 +49,10 @@
           <div class="move-status" :class="moveStatus.type">
             {{ moveStatus.message }}
           </div>
-          <button class="control-btn new-puzzle" 
-                  @click="initializeBoardFromAPI"
-                  :disabled="isLoading">
+          <button class="control-btn new-puzzle" @click="initializeBoardFromAPI" :disabled="isLoading">
             New Puzzle
           </button>
-          <button class="control-btn reset" 
-                  @click="resetPuzzle"
-                  :disabled="!gameId">
+          <button class="control-btn reset" @click="resetPuzzle" :disabled="!gameId">
             Reset
           </button>
         </div>
@@ -80,10 +62,18 @@
       <div class="analysis-panel">
         <div class="engine-status" v-if="!engineReady">
           <div class="status-indicator">
-            Initializing Stockfish...
+            <div v-if="stockfish === null">
+              Initializing Stockfish...
+            </div>
+            <div v-else-if="!engineReady" class="error-message">
+              Waiting for engine to be ready...
+              <button @click="initializeStockfish" class="retry-btn">
+                Retry
+              </button>
+            </div>
           </div>
         </div>
-        
+
         <div class="engine-analysis" v-else>
           <h3>Engine Analysis</h3>
           <div class="evaluation-container">
@@ -91,7 +81,7 @@
               <div class="eval-value">{{ getEvaluationText() }}</div>
             </div>
           </div>
-          
+
           <div class="analysis-info">
             <div class="analyzing-status" v-if="isAnalyzing">
               <div class="analyzing-spinner"></div>
@@ -110,31 +100,27 @@
     <div class="move-history" v-if="moveHistory.length">
       <h3>Moves with Analysis</h3>
       <div class="moves-list">
-        <span v-for="(move, index) in moveHistory" 
-              :key="index"
-              :class="[
-                'move-entry',
-                { 'current-move': currentMoveIndex === index }
-              ]">
+        <span v-for="(move, index) in moveHistory" :key="index" :class="[
+          'move-entry',
+          { 'current-move': currentMoveIndex === index }
+        ]">
           {{ formatMove(move, index) }}
         </span>
       </div>
     </div>
   </div>
 </template>
- 
+
 <script>
 import { Chess } from 'chess.js';
-import { Stockfish } from 'stockfish.js';
 
 const API_BASE_URL = 'https://cuddly-rotary-phone-q744jwxwpw9qfxvjx-5050.app.github.dev';
 
 const generatePlayerName = () => {
   const adjectives = ['Clever', 'Swift', 'Tactical', 'Strategic', 'Bold', 'Sneaky', 'Patient'];
   const pieces = ['Pawn', 'Knight', 'Bishop', 'Rook', 'Queen', 'King'];
-  return `${adjectives[Math.floor(Math.random() * adjectives.length)]}${
-    pieces[Math.floor(Math.random() * pieces.length)]
-  }${Math.floor(Math.random() * 1000)}`;
+  return `${adjectives[Math.floor(Math.random() * adjectives.length)]}${pieces[Math.floor(Math.random() * pieces.length)]
+    }${Math.floor(Math.random() * 1000)}`;
 };
 
 export default {
@@ -146,6 +132,7 @@ export default {
       boardMatrix: [],
       selectedSquare: null,
       isAnimated: true,
+      gameEnded: false,
       puzzleRating: 0,
       moveStatus: {
         type: 'info',
@@ -165,24 +152,42 @@ export default {
       lastMove: null,
       isLoading: false,
       highlightedSquares: new Set(),
-    // New Stockfish related data
+      // Stockfish related data
       stockfish: null,
-      engineDepth: 15, // Analysis depth
+      engineDepth: 15,
       currentEvaluation: null,
       isAnalyzing: false,
       engineReady: false,
       bestMove: null,
-      analysisHistory: [], // Store analysis for each position
+      analysisHistory: [],
     };
   },
 
-  created() {
+  computed: {
+    currentTurn() {
+      return this.chess ? this.chess.turn() : null;
+    },
+    getEvaluationBarStyle() {
+      if (this.currentEvaluation === null) return { height: '50%' };
+
+      // Convert evaluation to percentage (clamp between 10% and 90%)
+      const evalScore = Math.max(-5, Math.min(5, this.currentEvaluation));
+      const percentage = 50 + (evalScore * 8);
+      return {
+        height: `${percentage}%`,
+        background: this.currentEvaluation >= 0
+          ? 'linear-gradient(to bottom, #4ade80, #22c55e)'
+          : 'linear-gradient(to bottom, #f87171, #dc2626)'
+      };
+    }
+  },
+
+  async created() {
     this.chess = new Chess();
-    this.initializeStockfish();
+    await this.initializeStockfish();
     this.fetchUserStats();
     this.initializeBoardFromAPI();
   },
-
 
   beforeDestroy() {
     if (this.stockfish) {
@@ -190,8 +195,116 @@ export default {
     }
   },
 
-
   methods: {
+    async initializeStockfish() {
+      try {
+        // Create a new worker directly (don't load external script first)
+        this.stockfish = new Worker('/stockfish.wasm');
+
+
+        // Set up error handling
+        this.stockfish.onerror = (error) => {
+          console.error('Stockfish worker error:', error);
+          this.engineReady = false;
+        };
+
+        // Set up message handling
+        this.stockfish.onmessage = (event) => {
+          const message = event.data;
+          console.log('Stockfish message:', message); // Debug logging
+
+          if (message === 'uciok') {
+            console.log('UCI OK received');
+            this.stockfish.postMessage('isready');
+          }
+          else if (message === 'readyok') {
+            console.log('Engine ready');
+            this.engineReady = true;
+            this.stockfish.postMessage('ucinewgame');
+            this.stockfish.postMessage('setoption name MultiPV value 1');
+          }
+          else if (message.includes('bestmove')) {
+            this.isAnalyzing = false;
+            const bestMove = message.split(' ')[1];
+            this.bestMove = bestMove;
+          }
+          else if (message.includes('score cp')) {
+            const scoreMatch = message.match(/score cp ([-\d]+)/);
+            if (scoreMatch) {
+              const score = parseInt(scoreMatch[1]) / 100;
+              this.currentEvaluation = score;
+            }
+          }
+        };
+
+        // Initialize the engine
+        this.stockfish.postMessage('uci');
+
+        console.log('Stockfish initialization started');
+
+      } catch (error) {
+        console.error('Error initializing Stockfish:', error);
+        this.engineReady = false;
+      }
+    },
+
+    handleStockfishMessage(event) {
+      const message = event.data;
+
+      if (message === 'readyok') {
+        this.engineReady = true;
+      }
+      else if (message.includes('bestmove')) {
+        this.isAnalyzing = false;
+        const bestMove = message.split(' ')[1];
+        this.bestMove = bestMove;
+      }
+      else if (message.includes('score cp')) {
+        const scoreMatch = message.match(/score cp ([-\d]+)/);
+        if (scoreMatch) {
+          const score = parseInt(scoreMatch[1]) / 100;
+          this.currentEvaluation = score;
+
+          if (this.moveHistory.length > 0) {
+            const lastMove = this.moveHistory[this.moveHistory.length - 1];
+            this.analysisHistory.push({
+              move: lastMove,
+              evaluation: score,
+              bestMove: this.bestMove
+            });
+          }
+        }
+      }
+    },
+
+    // Analyze current position with debounce to prevent overload
+    analyzePosition: debounce(function () {
+      if (!this.engineReady || this.isAnalyzing) return;
+
+      this.isAnalyzing = true;
+      const fen = this.chess.fen();
+
+      this.stockfish.postMessage('position fen ' + fen);
+      this.stockfish.postMessage('go depth ' + this.engineDepth);
+    }, 500),
+
+    getEvaluationText() {
+      if (this.currentEvaluation === null) return 'Analyzing...';
+
+      const score = Math.abs(this.currentEvaluation);
+      const color = this.currentEvaluation > 0 ? 'White' : 'Black';
+
+      if (score > 5) {
+        return `${color} is winning (+${score.toFixed(1)})`;
+      } else if (score > 2) {
+        return `${color} has clear advantage (+${score.toFixed(1)})`;
+      } else if (score > 0.5) {
+        return `${color} is slightly better (+${score.toFixed(1)})`;
+      } else {
+        return 'Position is equal';
+      }
+    },
+
     async fetchUserStats() {
       try {
         const response = await fetch(`${this.apiBaseUrl}/api/stats/${this.playerName}`);
@@ -214,9 +327,9 @@ export default {
             'Content-Type': 'application/json',
             'Accept': 'application/json'
           },
-          body: JSON.stringify({ 
-            playerId: this.playerName, 
-            targetRating: this.puzzleRating 
+          body: JSON.stringify({
+            playerId: this.playerName,
+            targetRating: this.puzzleRating
           })
         });
 
@@ -227,14 +340,28 @@ export default {
         const game = await response.json();
         this.gameId = game.gameId;
         this.puzzleRating = game.puzzleRating;
-        this.initializeBoard(game.fen);
 
+        // Reset game state
+        this.gameEnded = false;
+        this.selectedSquare = null;
+        this.highlightedSquares.clear();
         this.moveHistory = [];
         this.lastMove = null;
+        this.currentEvaluation = null;
+        this.bestMove = null;
+        this.analysisHistory = [];
+
+        // Initialize new board position
+        this.initializeBoard(game.fen);
+
         this.moveStatus = {
           type: 'info',
           message: 'Make your move'
         };
+
+        // Start analyzing new position
+        this.analyzePosition();
+
       } catch (error) {
         console.error('Error initializing board:', error);
         // If API fails, initialize with default starting position
@@ -243,89 +370,6 @@ export default {
         this.isLoading = false;
       }
     },
-
-
-
-
-    initializeStockfish() {
-      this.stockfish = new Stockfish();
-      
-      this.stockfish.onmessage = (event) => {
-        this.handleStockfishMessage(event);
-      };
-
-      // Initialize engine with standard settings
-      this.stockfish.postMessage('uci');
-      this.stockfish.postMessage('isready');
-      this.stockfish.postMessage('ucinewgame');
-      this.stockfish.postMessage('setoption name MultiPV value 1');
-    },
-
-    // Handle Stockfish engine messages
-    handleStockfishMessage(event) {
-      const message = event.data;
-      
-      if (message === 'readyok') {
-        this.engineReady = true;
-      } 
-      else if (message.includes('bestmove')) {
-        this.isAnalyzing = false;
-        const bestMove = message.split(' ')[1]; // Fix: Remove array destructuring
-        this.bestMove = bestMove;
-      }
-      else if (message.includes('score cp')) {
-        // Parse evaluation score
-        const scoreMatch = message.match(/score cp ([-\d]+)/);
-        if (scoreMatch) {
-          const score = parseInt(scoreMatch[1]) / 100; // Convert centipawns to pawns
-          this.currentEvaluation = score;
-          
-          // Store analysis in history
-          if (this.moveHistory.length > 0) {
-            const lastMove = this.moveHistory[this.moveHistory.length - 1];
-            this.analysisHistory.push({
-              move: lastMove,
-              evaluation: score,
-              bestMove: this.bestMove
-            });
-          }
-        }
-      }
-    },
-
-    // Analyze current position
-    analyzePosition() {
-      if (!this.engineReady || this.isAnalyzing) return;
-      
-      this.isAnalyzing = true;
-      const fen = this.chess.fen();
-      
-      this.stockfish.postMessage('position fen ' + fen);
-      this.stockfish.postMessage('go depth ' + this.engineDepth);
-    },
-
-    // Get evaluation text
-    getEvaluationText() {
-      if (this.currentEvaluation === null) return 'Analyzing...';
-      
-      const score = Math.abs(this.currentEvaluation);
-      const color = this.currentEvaluation > 0 ? 'White' : 'Black';
-      
-      if (score > 5) {
-        return `${color} is winning (+${score.toFixed(1)})`;
-      } else if (score > 2) {
-        return `${color} has clear advantage (+${score.toFixed(1)})`;
-      } else if (score > 0.5) {
-        return `${color} is slightly better (+${score.toFixed(1)})`;
-      } else {
-        return 'Position is equal';
-      }
-    },
-
-
-
-
-
 
     initializeBoard(fen) {
       if (!fen) {
@@ -344,13 +388,11 @@ export default {
 
     updateBoardMatrix() {
       const position = this.chess.board();
-      this.boardMatrix = position.map(row => 
+      this.boardMatrix = position.map(row =>
         row.map(square => {
           if (!square) return null;
           const piece = square.type.toLowerCase();
-          // eslint-disable-next-line
-          const color = square.color === 'w' ? 'w' : 'b';
-          // eslint-disable-next-line
+          //const color = square.color === 'w' ? 'w' : 'b';
           return this.pieceMap[square.color === 'w' ? piece.toUpperCase() : piece];
         })
       );
@@ -370,16 +412,39 @@ export default {
 
         // Update the visual board
         this.updateBoardMatrix();
-        
+
         // Record move
-        const moveRecord = { 
-          from, 
+        const moveRecord = {
+          from,
           to,
           fen: this.chess.fen(),
-          evaluation: null // Will be updated by analysis
+          evaluation: null
         };
         this.moveHistory.push(moveRecord);
         this.lastMove = moveRecord;
+
+        // Check for game end conditions
+        if (this.chess.isCheckmate()) {
+          const winner = this.chess.turn() === 'w' ? 'Black' : 'White';
+          this.moveStatus = {
+            type: 'success',
+            message: `Checkmate! ${winner} wins!`
+          };
+          // Optionally disable further moves
+          this.gameEnded = true;
+        } else if (this.chess.isDraw()) {
+          this.moveStatus = {
+            type: 'info',
+            message: 'Game drawn!'
+          };
+          this.gameEnded = true;
+        } else if (this.chess.isStalemate()) {
+          this.moveStatus = {
+            type: 'info',
+            message: 'Stalemate!'
+          };
+          this.gameEnded = true;
+        }
 
         // Start position analysis
         this.analyzePosition();
@@ -392,7 +457,7 @@ export default {
             'Accept': 'application/json'
           },
           body: JSON.stringify({ from, to })
-        }).catch(() => {});
+        }).catch(() => { });
 
         return true;
       } catch (error) {
@@ -400,20 +465,6 @@ export default {
         return false;
       }
     },
-
-        // Add evaluation to move formatting
-    formatMove(move, index) {
-      if (!move) return '';
-      const moveNumber = Math.floor(index / 2) + 1;
-      const isWhite = index % 2 === 0;
-      const analysis = this.analysisHistory[index];
-      const evalText = analysis ? ` (${analysis.evaluation.toFixed(1)})` : '';
-      
-      return isWhite 
-        ? `${moveNumber}. ${move.from}-${move.to}${evalText}` 
-        : `${move.from}-${move.to}${evalText}`;
-    },
-
 
     handleDragStart(event, rankIndex, fileIndex) {
       if (!this.canDragPiece(rankIndex, fileIndex)) {
@@ -423,7 +474,7 @@ export default {
 
       this.isDragging = true;
       this.selectedSquare = { rank: rankIndex, file: fileIndex };
-      event.dataTransfer.setData('text/plain', 
+      event.dataTransfer.setData('text/plain',
         this.getSquareNotation(rankIndex, fileIndex));
 
       this.calculateLegalMoves(rankIndex, fileIndex);
@@ -443,7 +494,7 @@ export default {
       if (fromSquare === toSquare) return;
 
       await this.makeMove(fromSquare, toSquare);
-      
+
       this.isDragging = false;
       this.selectedSquare = null;
       this.highlightedSquares.clear();
@@ -457,7 +508,7 @@ export default {
         }
       } else {
         const fromSquare = this.getSquareNotation(
-          this.selectedSquare.rank, 
+          this.selectedSquare.rank,
           this.selectedSquare.file
         );
         const toSquare = this.getSquareNotation(rankIndex, fileIndex);
@@ -469,7 +520,7 @@ export default {
         }
 
         await this.makeMove(fromSquare, toSquare);
-        
+
         this.selectedSquare = null;
         this.highlightedSquares.clear();
       }
@@ -477,9 +528,9 @@ export default {
 
     calculateLegalMoves(rankIndex, fileIndex) {
       const square = this.getSquareNotation(rankIndex, fileIndex);
-      this.legalMoves = this.chess.moves({ 
+      this.legalMoves = this.chess.moves({
         square,
-        verbose: true 
+        verbose: true
       });
 
       this.highlightedSquares.clear();
@@ -489,12 +540,14 @@ export default {
     },
 
     canSelectSquare(rankIndex, fileIndex) {
+      if (this.gameEnded) return false;
       const square = this.getSquareNotation(rankIndex, fileIndex);
       const piece = this.chess.get(square);
       return piece && piece.color === this.chess.turn();
     },
 
     canDragPiece(rankIndex, fileIndex) {
+      if (this.gameEnded) return false;
       const square = this.getSquareNotation(rankIndex, fileIndex);
       const piece = this.chess.get(square);
       return piece && piece.color === this.chess.turn();
@@ -509,18 +562,15 @@ export default {
     },
 
     isSquareSelected(rankIndex, fileIndex) {
-      return this.selectedSquare && 
-             this.selectedSquare.rank === rankIndex && 
-             this.selectedSquare.file === fileIndex;
+      return this.selectedSquare &&
+        this.selectedSquare.rank === rankIndex &&
+        this.selectedSquare.file === fileIndex;
     },
 
     isHighlightedSquare(rankIndex, fileIndex) {
       const square = this.getSquareNotation(rankIndex, fileIndex);
       return this.highlightedSquares.has(square);
     },
-
-
-
 
     isLastMoveSquare(rankIndex, fileIndex) {
       if (!this.lastMove) return false;
@@ -534,35 +584,57 @@ export default {
       };
     },
 
+    formatMove(move, index) {
+      if (!move) return '';
+      const moveNumber = Math.floor(index / 2) + 1;
+      const isWhite = index % 2 === 0;
+      const analysis = this.analysisHistory[index];
+      const evalText = analysis ? ` (${analysis.evaluation.toFixed(1)})` : '';
+
+      return isWhite
+        ? `${moveNumber}. ${move.from}-${move.to}${evalText}`
+        : `${move.from}-${move.to}${evalText}`;
+    },
+
     async resetPuzzle() {
       if (!this.gameId) return;
-      this.chess.reset();
-      this.updateBoardMatrix();
+
+      // Reset game state
+      this.gameEnded = false;
+      this.selectedSquare = null;
+      this.highlightedSquares.clear();
       this.moveHistory = [];
       this.lastMove = null;
+      this.currentEvaluation = null;
+      this.bestMove = null;
+      this.analysisHistory = [];
+
+      this.chess.reset();
+      this.updateBoardMatrix();
+
       this.moveStatus = {
         type: 'info',
         message: 'Board reset'
       };
-    }
-  },
 
-  computed: {
-    currentTurn() {
-      return this.chess ? this.chess.turn() : null;
-    }
-  },
-
-  watch: {
-    rating: {
-      immediate: true,
-      handler(newRating) {
-        this.puzzleRating = newRating;
-      }
+      // Start analyzing new position
+      this.analyzePosition();
     }
   }
 };
 
+// Utility function for debouncing
+function debounce(func, wait) {
+  let timeout;
+  return function executedFunction(...args) {
+    const later = () => {
+      clearTimeout(timeout);
+      func.apply(this, args);
+    };
+    clearTimeout(timeout);
+    timeout = setTimeout(later, wait);
+  };
+}
 </script>
 
 <style scoped>
@@ -572,7 +644,8 @@ export default {
   flex-direction: column;
   align-items: center;
   justify-content: start;
-  height: 300vh; /* Adjust height to approximately 3 viewports */
+  height: 300vh;
+  /* Adjust height to approximately 3 viewports */
   width: 100%;
   background: linear-gradient(to bottom right, #1e293b, #0f172a);
   color: #e5e7eb;
@@ -587,6 +660,7 @@ export default {
   align-items: center;
   margin-top: 50px;
 }
+
 /* Chess Board Styling */
 
 .chess-board {
@@ -604,6 +678,7 @@ export default {
     opacity: 0;
     transform: scale(0.9);
   }
+
   to {
     opacity: 1;
     transform: scale(1);
@@ -723,7 +798,8 @@ export default {
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
 }
 
-.player-info, .puzzle-rating {
+.player-info,
+.puzzle-rating {
   color: #f8fafc;
 }
 
@@ -757,6 +833,7 @@ export default {
   background: #4b5563;
   cursor: not-allowed;
 }
+
 /* Move Status */
 
 .move-status {
@@ -921,7 +998,9 @@ export default {
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .best-move {
@@ -972,5 +1051,25 @@ export default {
   .evaluation-container {
     height: 100px;
   }
+}
+
+.error-message {
+  color: #ef4444;
+  text-align: center;
+}
+
+.retry-btn {
+  margin-top: 10px;
+  padding: 8px 16px;
+  background: #3b82f6;
+  border: none;
+  border-radius: 4px;
+  color: white;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.retry-btn:hover {
+  background: #2563eb;
 }
 </style>

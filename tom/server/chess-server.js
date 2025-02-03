@@ -3,11 +3,21 @@ const fs = require('fs');
 const csv = require('csv-parser');
 const { v4: uuidv4 } = require('uuid');
 
+// Configuration
+const CONFIG = {
+    MAX_CACHE_SIZE: 1000,
+    PUZZLE_EXPIRY_TIME: 30 * 60 * 1000, // 30 minutes
+    LICHESS_API_TOKEN: process.env.LICHESS_API_TOKEN || 'lip_2iBBN7H4Hs38jGw5bLlZ', // Should be in env vars
+    CLEANUP_INTERVAL: 60 * 60 * 1000 // 1 hour
+};
+
 // Custom error class for better error handling
 class ChessServerError extends Error {
-    constructor(message, code) {
+    constructor(message, code, details = null) {
         super(message);
+        this.name = 'ChessServerError';
         this.code = code;
+        this.details = details;
         this.timestamp = new Date().toISOString();
     }
 }
@@ -15,20 +25,12 @@ class ChessServerError extends Error {
 // Unicode representation of chess pieces
 const PIECE_UNICODE = {
     'w': {
-        'k': '♔',
-        'q': '♕',
-        'r': '♖',
-        'b': '♗',
-        'n': '♘',
-        'p': '♙'
+        'k': '♔', 'q': '♕', 'r': '♖',
+        'b': '♗', 'n': '♘', 'p': '♙'
     },
     'b': {
-        'k': '♚',
-        'q': '♛',
-        'r': '♜',
-        'b': '♝',
-        'n': '♞',
-        'p': '♟'
+        'k': '♚', 'q': '♛', 'r': '♜',
+        'b': '♝', 'n': '♞', 'p': '♟'
     }
 };
 
@@ -37,71 +39,73 @@ const games = {};
 const puzzles = [];
 const userPuzzleStats = {};
 const puzzleCache = new Map();
-const MAX_CACHE_SIZE = 1000;
-const PUZZLE_EXPIRY_TIME = 30 * 60 * 1000; // 30 minutes
 
+// Helper Functions
+const moveToString = (move) => `${move.from}${move.to}${move.promotion || ''}`;
 
-// Load puzzles from CSV file
-const loadPuzzles = () => {
-    return new Promise((resolve, reject) => {
-        const puzzleData = [];
-        fs.createReadStream('/workspaces/site/tom/src/assets/lichess_db_puzzle.csv')
-            .pipe(csv({
-                skipLines: 0,
-                headers: ['PuzzleId', 'FEN', 'Moves', 'Rating', 'RatingDeviation', 'Popularity', 'NbPlays', 'Themes', 'GameUrl']
-            }))
-            .on('data', (data) => {
-                try {
-                    // Only process if we have the minimum required data
-                    if (data.FEN && data.Moves) {
-                        const processedPuzzle = {
-                            id: data.PuzzleId || uuidv4(),
-                            fen: data.FEN,
-                            board: parseFENToUnicodeBoard(data.FEN),
-                            moves: data.Moves.split(' ').filter(move => move.length > 0),
-                            rating: parseInt(data.Rating) || 1500,
-                            themes: data.Themes ? data.Themes.split(' ').filter(theme => theme.length > 0) : [],
-                            solution: data.Moves.split(' ').filter(move => move.length > 0)
-                        };
-                        puzzleData.push(processedPuzzle);
-
-                        // Add this after processing a puzzle
-                        if (puzzleData.length === 0 || puzzleData.length === 1) {
-                            console.log('Sample processed puzzle:', {
-                                id: processedPuzzle.id,
-                                fen: processedPuzzle.fen,
-                                moves: processedPuzzle.moves,  // Should be like ['f2g3', 'e6e7', 'b2b1', ...]
-                                solution: processedPuzzle.solution  // Same as moves
-                            });
-                        }
-                    }
-                } catch (error) {
-                    console.warn(`Skipping puzzle due to error: ${error.message}`);
-                }
-            })
-            .on('end', () => {
-                puzzles.push(...puzzleData);
-                console.log(`Loaded ${puzzles.length} puzzles successfully.`);
-                // Log first puzzle as a sample to verify format
-                if (puzzles.length > 0) {
-                    console.log('Sample puzzle:', {
-                        id: puzzles[0].id,
-                        fen: puzzles[0].fen,
-                        moves: puzzles[0].moves,
-                        solution: puzzles[0].solution  // Same as moves
-
-                    });
-                }
-                resolve(puzzles);
-            })
-            .on('error', (error) => {
-                console.error('Error loading puzzles:', error);
-                reject(error);
-            });
-    });
+const getUnicodePieces = (board) => {
+    return board.map(row =>
+        row.map(square =>
+            square ? PIECE_UNICODE[square.color][square.type] : ' '
+        )
+    );
 };
 
-// Helper function to parse FEN to Unicode board
+const generateHints = (game) => {
+    const currentPuzzleMove = game.puzzle.moves[game.currentMoveIndex];
+    const fromSquare = currentPuzzleMove.substring(0, 2);
+    const piece = game.chess.get(fromSquare);
+
+    return {
+        pieceType: piece?.type,
+        fromSquare,
+        possibleSquares: game.chess.moves({ square: fromSquare, verbose: true })
+            .map(move => move.to)
+    };
+};
+
+// Position Analysis Functions
+const analyzeLichessPosition = async (fen) => {
+    try {
+        const response = await fetch(
+            `https://lichess.org/api/cloud-eval?fen=${encodeURIComponent(fen)}`,
+            {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${CONFIG.LICHESS_API_TOKEN}`,
+                    'Accept': 'application/json'
+                }
+            }
+        );
+
+        if (!response.ok) {
+            throw new Error(`Lichess API error: ${response.status}`);
+        }
+
+        const data = await response.json();
+        return {
+            success: true,
+            score: data.pvs[0].cp / 100,
+            bestMove: data.pvs[0].moves.split(' ')[0],
+            depth: data.depth,
+            line: data.pvs[0].moves.split(' ')
+        };
+    } catch (error) {
+        console.warn('Lichess analysis failed:', error);
+        return {
+            success: false,
+            error: error.message
+        };
+    }
+};
+
+const makeRandomMove = (chess) => {
+    const moves = chess.moves({ verbose: true });
+    if (moves.length === 0) return null;
+    return moves[Math.floor(Math.random() * moves.length)];
+};
+
+// FEN Parser
 const parseFENToUnicodeBoard = (fen) => {
     const rows = fen.split(' ')[0].split('/');
     return rows.map(row => {
@@ -122,8 +126,54 @@ const parseFENToUnicodeBoard = (fen) => {
     });
 };
 
+// Puzzle Loading and Management
+const loadPuzzles = () => {
+    return new Promise((resolve, reject) => {
+        const puzzleData = [];
+        fs.createReadStream('/workspaces/site/tom/src/assets/lichess_db_puzzle.csv')
+            .pipe(csv({
+                skipLines: 0,
+                headers: ['PuzzleId', 'FEN', 'Moves', 'Rating', 'RatingDeviation', 'Popularity', 'NbPlays', 'Themes', 'GameUrl']
+            }))
+            .on('data', (data) => {
+                try {
+                    if (data.FEN && data.Moves) {
+                        const processedPuzzle = {
+                            id: data.PuzzleId || uuidv4(),
+                            fen: data.FEN,
+                            board: parseFENToUnicodeBoard(data.FEN),
+                            moves: data.Moves.split(' ').filter(move => move.length > 0),
+                            rating: parseInt(data.Rating) || 1500,
+                            themes: data.Themes ? data.Themes.split(' ').filter(theme => theme.length > 0) : [],
+                            solution: data.Moves.split(' ').filter(move => move.length > 0)
+                        };
+                        puzzleData.push(processedPuzzle);
+                    }
+                } catch (error) {
+                    console.warn(`Skipping puzzle due to error: ${error.message}`);
+                }
+            })
+            .on('end', () => {
+                puzzles.push(...puzzleData);
+                console.log(`Loaded ${puzzles.length} puzzles successfully.`);
+                if (puzzles.length > 0) {
+                    console.log('Sample puzzle:', {
+                        id: puzzles[0].id,
+                        fen: puzzles[0].fen,
+                        moves: puzzles[0].moves,
+                        solution: puzzles[0].solution
+                    });
+                }
+                resolve(puzzles);
+            })
+            .on('error', (error) => {
+                console.error('Error loading puzzles:', error);
+                reject(error);
+            });
+    });
+};
 
-// Create a new puzzle game with a fallback to a random puzzle
+// Game Management Functions
 const createNewPuzzleGame = (playerId, targetRating = 1500) => {
     try {
         const ratingRange = 100;
@@ -131,7 +181,6 @@ const createNewPuzzleGame = (playerId, targetRating = 1500) => {
             Math.abs(puzzle.rating - targetRating) <= ratingRange
         );
 
-        // If no puzzles found in the rating range, fallback to all puzzles
         if (eligiblePuzzles.length === 0) {
             console.warn('No puzzles found in the target rating range, selecting from all puzzles.');
             eligiblePuzzles = puzzles;
@@ -170,104 +219,133 @@ const createNewPuzzleGame = (playerId, targetRating = 1500) => {
     }
 };
 
-// Handle a move in the game
-const handleMove = (gameId, from, to, promotion = 'q') => {
+const createFreePlayGame = (playerId) => {
+    const gameId = uuidv4();
+    games[gameId] = {
+        chess: new Chess(),
+        playerId,
+        startTime: Date.now(),
+        moveHistory: [],
+        completed: false
+    };
+
+    return {
+        gameId,
+        board: games[gameId].chess.board(),
+        turn: games[gameId].chess.turn(),
+        fen: games[gameId].chess.fen(),
+        unicodePieces: getUnicodePieces(games[gameId].chess.board())
+    };
+};
+
+const handleMove = async (gameId, from, to, promotion = 'q') => {
     try {
+        if (!from || !to || typeof from !== 'string' || typeof to !== 'string') {
+            throw new ChessServerError('Invalid move format', 'INVALID_INPUT');
+        }
+
+        const squareRegex = /^[a-h][1-8]$/;
+        if (!squareRegex.test(from) || !squareRegex.test(to)) {
+            throw new ChessServerError('Invalid square notation', 'INVALID_SQUARE_FORMAT');
+        }
+
         const game = games[gameId];
         if (!game) {
             throw new ChessServerError('Game not found', 'GAME_NOT_FOUND');
         }
 
-        if (game.completed) {
-            throw new ChessServerError('Puzzle already completed', 'PUZZLE_COMPLETED');
-        }
-
-        const moveStart = Date.now();
         const move = game.chess.move({ from, to, promotion });
-
         if (!move) {
-            throw new ChessServerError('Invalid move', 'INVALID_MOVE');
+            throw new ChessServerError(
+                `Invalid move: ${from}-${to}${promotion !== 'q' ? promotion : ''}`,
+                'INVALID_MOVE'
+            );
         }
 
-        game.attempts++;
+        const analysis = await analyzeLichessPosition(game.chess.fen());
+        
         game.moveHistory.push({
             move,
-            timestamp: moveStart,
-            timeSpent: Date.now() - moveStart
+            timestamp: Date.now(),
+            analysis: analysis || null
         });
 
-        const expectedMove = game.puzzle.moves[game.currentMoveIndex];
-        const isCorrectMove = moveToString(move) === expectedMove;
+        if (game.completed || !game.puzzle) {
+            let computerMove = null;
+            if (analysis && analysis.bestMove) {
+                const [from, to] = [
+                    analysis.bestMove.substring(0, 2),
+                    analysis.bestMove.substring(2, 4)
+                ];
+                try {
+                    computerMove = game.chess.move({
+                        from,
+                        to,
+                        promotion: analysis.bestMove[4] || 'q'
+                    });
+                } catch (error) {
+                    console.warn('Failed to make best move, trying random move');
+                }
+            }
 
-        if (!isCorrectMove) {
-            game.chess.undo();
-            return {
-                isCorrect: false,
-                message: 'Incorrect move. Try again!',
-                board: game.chess.board(),
-                fen: game.chess.fen(),
-                unicodePieces: getUnicodePieces(game.chess.board()),
-                hints: generateHints(game)
-            };
-        }
+            if (!computerMove) {
+                computerMove = makeRandomMove(game.chess);
+                if (computerMove) {
+                    game.chess.move(computerMove);
+                }
+            }
 
-        game.currentMoveIndex++;
-
-        // Make opponent's move if necessary
-        if (game.currentMoveIndex < game.puzzle.moves.length) {
-            const opponentMove = game.puzzle.moves[game.currentMoveIndex];
-            game.chess.move(opponentMove);
-            game.currentMoveIndex++;
-        }
-
-        const isPuzzleCompleted = game.currentMoveIndex >= game.puzzle.moves.length;
-        if (isPuzzleCompleted) {
-            game.completed = true;
-            updateUserStats(game.playerId, game);
+            if (computerMove) {
+                const computerAnalysis = await analyzeLichessPosition(game.chess.fen());
+                game.moveHistory.push({
+                    move: computerMove,
+                    timestamp: Date.now(),
+                    analysis: computerAnalysis || null,
+                    isComputerMove: true
+                });
+            }
         }
 
         return {
             isCorrect: true,
             board: game.chess.board(),
             move,
+            computerMove: game.moveHistory[game.moveHistory.length - 1]?.isComputerMove 
+                ? game.moveHistory[game.moveHistory.length - 1].move 
+                : null,
             turn: game.chess.turn(),
             fen: game.chess.fen(),
-            isGameOver: game.chess.game_over(),
-            isPuzzleCompleted,
-            unicodePieces: getUnicodePieces(game.chess.board())
+            isGameOver: game.chess.isGameOver(), // Fixed this line
+            isPuzzleCompleted: game.completed,
+            unicodePieces: getUnicodePieces(game.chess.board()),
+            analysis: analysis?.success ? {
+                evaluation: analysis.score,
+                bestMove: analysis.bestMove,
+                depth: analysis.depth,
+                line: analysis.line
+            } : null,
+            moveHistory: game.moveHistory.map(hist => ({
+                move: hist.move,
+                evaluation: hist.analysis?.score ? Number(hist.analysis.score.toFixed(1)) : null,  // Round to 1 decimal
+                san: hist.move.san, // Add algebraic notation
+                bestMove: hist.analysis?.bestMove || null,
+                isComputerMove: hist.isComputerMove || false,
+                moveNumber: Math.floor((game.moveHistory.indexOf(hist) + 2) / 2) // Add move numbers
+            })),
+            timestamp: new Date().toISOString()
         };
 
     } catch (error) {
         console.error('Error handling move:', error);
-        throw new ChessServerError(error.message, error.code || 'MOVE_ERROR');
+        throw new ChessServerError(
+            error.message,
+            error.code || 'MOVE_ERROR',
+            { from, to, promotion }
+        );
     }
 };
 
-// Helper functions
-const moveToString = (move) => `${move.from}${move.to}${move.promotion || ''}`;
-
-const getUnicodePieces = (board) => {
-    return board.map(row =>
-        row.map(square =>
-            square ? PIECE_UNICODE[square.color][square.type] : ' '
-        )
-    );
-};
-
-const generateHints = (game) => {
-    const currentPuzzleMove = game.puzzle.moves[game.currentMoveIndex];
-    const fromSquare = currentPuzzleMove.substring(0, 2);
-    const piece = game.chess.get(fromSquare);
-
-    return {
-        pieceType: piece?.type,
-        fromSquare,
-        possibleSquares: game.chess.moves({ square: fromSquare, verbose: true })
-            .map(move => move.to)
-    };
-};
-
-// User statistics management
+// User Statistics Management
 const updateUserStats = (playerId, game) => {
     if (!userPuzzleStats[playerId]) {
         userPuzzleStats[playerId] = {
@@ -316,7 +394,7 @@ const getUserStats = (playerId) => {
     };
 };
 
-// Game state and management
+// Game State Management
 const getGameState = (gameId) => {
     const game = games[gameId];
     if (!game) {
@@ -330,30 +408,28 @@ const getGameState = (gameId) => {
         isGameOver: game.chess.game_over(),
         isCheck: game.chess.in_check(),
         isPuzzleCompleted: game.completed,
-        puzzleRating: game.puzzle.rating,
+        puzzleRating: game.puzzle?.rating,
         attempts: game.attempts,
         unicodePieces: getUnicodePieces(game.chess.board()),
         moveHistory: game.moveHistory
     };
 };
 
-// Cleanup expired games
+// Cleanup Functions
 const cleanupGames = () => {
     const now = Date.now();
     Object.keys(games).forEach(gameId => {
-        if (now - games[gameId].startTime > PUZZLE_EXPIRY_TIME) {
+        if (now - games[gameId].startTime > CONFIG.PUZZLE_EXPIRY_TIME) {
             delete games[gameId];
         }
     });
 };
 
-// Run cleanup every hour
-setInterval(cleanupGames, 60 * 60 * 1000);
-
 // Initialize the server
 const initializeServer = async () => {
     try {
         await loadPuzzles();
+        setInterval(cleanupGames, CONFIG.CLEANUP_INTERVAL);
         console.log('Chess server initialized successfully');
     } catch (error) {
         console.error('Failed to initialize chess server:', error);
@@ -365,6 +441,7 @@ const initializeServer = async () => {
 module.exports = {
     initializeServer,
     createNewPuzzleGame,
+    createFreePlayGame,
     handleMove,
     getGameState,
     getUserStats,

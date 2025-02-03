@@ -1,20 +1,28 @@
 <template>
   <div class="chess-container">
-    <!-- Header with player info and puzzle rating -->
+    <!-- Header -->
     <div class="game-header">
-      <div class="player-info">
-        Player: {{ playerName }}
-      </div>
-      <div class="puzzle-rating">
-        Rating: {{ puzzleRating }}
-      </div>
+      <div class="player-info">Player: {{ playerName }}</div>
+      <div class="puzzle-rating">Rating: {{ puzzleRating }}</div>
     </div>
 
+    <!-- Main board and analysis section -->
     <div class="board-and-analysis">
-      <!-- Chess board with drag and drop support -->
-      <div class="board-and-controls">
+      <!-- Left side - Board and controls -->
+      <div class="board-section">
+        <!-- Vertical evaluation bar -->
+        <div class="vertical-eval-bar">
+          <div class="eval-bar-container">
+            <div class="eval-bar" :style="getEvaluationBarStyle">
+              <span class="eval-number">
+                {{ currentEvaluation ? currentEvaluation.toFixed(1) : '0.0' }}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Chess board -->
         <div class="chess-board" :class="{ 'board-animated': isAnimated }" @dragover.prevent @drop="handleDrop">
-          <!-- Board coordinates -->
           <div class="coordinates files">
             <span v-for="file in files" :key="file">{{ file }}</span>
           </div>
@@ -22,29 +30,37 @@
             <span v-for="rank in ranks" :key="rank">{{ rank }}</span>
           </div>
 
-          <!-- Chess board squares and pieces -->
           <div class="board">
             <div v-for="(row, rankIndex) in boardMatrix" :key="rankIndex" class="board-row">
-              <div v-for="(square, fileIndex) in row" :key="`${rankIndex}-${fileIndex}`" :class="[
-                'square',
-                getSquareColor(rankIndex, fileIndex),
-                { 'square-selected': isSquareSelected(rankIndex, fileIndex) },
-                { 'square-highlight': isHighlightedSquare(rankIndex, fileIndex) },
-                { 'square-last-move': isLastMoveSquare(rankIndex, fileIndex) }
-              ]" @click="handleSquareClick(rankIndex, fileIndex)" @dragover.prevent
-                @drop="handleDrop($event, rankIndex, fileIndex)">
-                <div v-if="square" class="piece" :class="[
-                  { 'piece-animated': isAnimated },
-                  { 'piece-draggable': canDragPiece(rankIndex, fileIndex) }
-                ]" :style="getPieceStyle(square)" draggable="true"
-                  @dragstart="handleDragStart($event, rankIndex, fileIndex)" @dragend="handleDragEnd">
+              <div v-for="(square, fileIndex) in row" 
+                   :key="`${rankIndex}-${fileIndex}`" 
+                   :class="[
+                     'square',
+                     getSquareColor(rankIndex, fileIndex),
+                     { 'square-selected': isSquareSelected(rankIndex, fileIndex) },
+                     { 'square-highlight': isHighlightedSquare(rankIndex, fileIndex) },
+                     { 'square-last-move': isLastMoveSquare(rankIndex, fileIndex) }
+                   ]"
+                   @click="handleSquareClick(rankIndex, fileIndex)"
+                   @dragover.prevent
+                   @drop="handleDrop($event, rankIndex, fileIndex)">
+                <div v-if="square" 
+                     class="piece" 
+                     :class="[
+                       { 'piece-animated': isAnimated },
+                       { 'piece-draggable': canDragPiece(rankIndex, fileIndex) }
+                     ]"
+                     :style="getPieceStyle(square)"
+                     draggable="true"
+                     @dragstart="handleDragStart($event, rankIndex, fileIndex)"
+                     @dragend="handleDragEnd">
                 </div>
               </div>
             </div>
           </div>
         </div>
 
-        <!-- Game controls and status below the board -->
+        <!-- Controls -->
         <div class="game-controls">
           <div class="move-status" :class="moveStatus.type">
             {{ moveStatus.message }}
@@ -58,36 +74,19 @@
         </div>
       </div>
 
-      <!-- Stockfish Analysis Panel -->
+      <!-- Right side - Analysis panel -->
       <div class="analysis-panel">
-        <div class="engine-status" v-if="!engineReady">
-          <div class="status-indicator">
-            <div v-if="stockfish === null">
-              Initializing Stockfish...
-            </div>
-            <div v-else-if="!engineReady" class="error-message">
-              Waiting for engine to be ready...
-              <button @click="initializeStockfish" class="retry-btn">
-                Retry
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <div class="engine-analysis" v-else>
-          <h3>Engine Analysis</h3>
-          <div class="evaluation-container">
-            <div class="evaluation-bar" :style="getEvaluationBarStyle()">
-              <div class="eval-value">{{ getEvaluationText() }}</div>
-            </div>
-          </div>
-
+        <div class="engine-analysis">
+          <h3>Position Analysis</h3>
           <div class="analysis-info">
-            <div class="analyzing-status" v-if="isAnalyzing">
+            <div v-if="isAnalyzing" class="analyzing-status">
               <div class="analyzing-spinner"></div>
-              Analyzing position...
+              Analyzing...
             </div>
-            <div class="best-move" v-if="bestMove && !isAnalyzing">
+            <div v-else>
+              {{ getEvaluationText() }}
+            </div>
+            <div v-if="bestMove" class="best-move">
               <span class="label">Best move:</span>
               <span class="move">{{ bestMove }}</span>
             </div>
@@ -96,143 +95,174 @@
       </div>
     </div>
 
-    <!-- Move history with analysis -->
+    <!-- Move history -->
     <div class="move-history" v-if="moveHistory.length">
-  <h3>Moves with Analysis</h3>
-  <div class="moves-list">
-    <!-- This is where you place your move history code -->
-    <span v-for="(move, index) in moveHistory" 
-          :key="index" 
-          :class="[
-            'move-entry',
-            { 'current-move': currentMoveIndex === index }
-          ]">
-      {{ formatMove(move, index) }}
-    </span>
+      <h3>Moves with Analysis</h3>
+      <div class="moves-list">
+        <span v-for="(move, index) in moveHistory" 
+              :key="index" 
+              :class="['move-entry', { 'current-move': currentMoveIndex === index }]">
+          {{ formatMove(move, index) }}
+        </span>
+      </div>
+    </div>
   </div>
-</div>
-</div>
 </template>
-
 <script>
 import { Chess } from 'chess.js';
 
 const API_BASE_URL = 'https://cuddly-rotary-phone-q744jwxwpw9qfxvjx-5050.app.github.dev';
 
+class LichessService {
+    constructor() {
+        this.baseUrl = 'https://lichess.org/api';
+        this.token = 'lip_2iBBN7H4Hs38jGw5bLlZ';
+    }
+
+    async analyzePosition(fen, multiPv = 1) {
+        try {
+            const response = await fetch(`${this.baseUrl}/cloud-eval?fen=${encodeURIComponent(fen)}&multiPv=${multiPv}`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${this.token}`,
+                    'Accept': 'application/json'
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error(`Analysis failed: ${response.status}`);
+            }
+
+            const data = await response.json();
+            return {
+                success: true,
+                score: data.pvs[0].cp / 100,
+                bestMove: data.pvs[0].moves.split(' ')[0],
+                depth: data.depth
+            };
+        } catch (error) {
+            console.error('Lichess analysis failed:', error);
+            return {
+                success: false,
+                error: error.message
+            };
+        }
+    }
+}
+
 const generatePlayerName = () => {
-  const adjectives = ['Clever', 'Swift', 'Tactical', 'Strategic', 'Bold', 'Sneaky', 'Patient'];
-  const pieces = ['Pawn', 'Knight', 'Bishop', 'Rook', 'Queen', 'King'];
-  return `${adjectives[Math.floor(Math.random() * adjectives.length)]}${pieces[Math.floor(Math.random() * pieces.length)]}${Math.floor(Math.random() * 1000)}`;
+    const adjectives = ['Clever', 'Swift', 'Tactical', 'Strategic', 'Bold', 'Sneaky', 'Patient'];
+    const pieces = ['Pawn', 'Knight', 'Bishop', 'Rook', 'Queen', 'King'];
+    return `${adjectives[Math.floor(Math.random() * adjectives.length)]}${pieces[Math.floor(Math.random() * pieces.length)]}${Math.floor(Math.random() * 1000)}`;
 };
 
 export default {
-  name: 'ChessBoard',
-  data() {
-    return {
-      files: ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'],
-      ranks: ['8', '7', '6', '5', '4', '3', '2', '1'],
-      boardMatrix: [],
-      selectedSquare: null,
-      isAnimated: true,
-      gameEnded: false,
-      puzzleRating: 0,
-      moveStatus: {
-        type: 'info',
-        message: 'Make your move'
-      },
-      pieceMap: {
-        'p': 'bP', 'n': 'bN', 'b': 'bB', 'r': 'bR', 'q': 'bQ', 'k': 'bK',
-        'P': 'wP', 'N': 'wN', 'B': 'wB', 'R': 'wR', 'Q': 'wQ', 'K': 'wK'
-      },
-      gameId: null,
-      playerName: generatePlayerName(),
-      apiBaseUrl: API_BASE_URL,
-      chess: null,
-      isDragging: false,
-      legalMoves: [],
-      moveHistory: [],
-      lastMove: null,
-      isLoading: false,
-      highlightedSquares: new Set(),
-      // Analysis related data
-      currentMoveIndex: 0,
-      engineDepth: 15,
-      currentEvaluation: null,
-      isAnalyzing: false,
-      bestMove: null,
-      analysisHistory: [],
-    };
-  },
-
-  computed: {
-    currentTurn() {
-      return this.chess ? this.chess.turn() : null;
+    name: 'ChessBoard',
+    data() {
+        return {
+            files: ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'],
+            ranks: ['8', '7', '6', '5', '4', '3', '2', '1'],
+            boardMatrix: [],
+            selectedSquare: null,
+            isAnimated: true,
+            gameEnded: false,
+            puzzleRating: 0,
+            moveStatus: {
+                type: 'info',
+                message: 'Make your move'
+            },
+            pieceMap: {
+                'p': 'bP', 'n': 'bN', 'b': 'bB', 'r': 'bR', 'q': 'bQ', 'k': 'bK',
+                'P': 'wP', 'N': 'wN', 'B': 'wB', 'R': 'wR', 'Q': 'wQ', 'K': 'wK'
+            },
+            gameId: null,
+            playerName: generatePlayerName(),
+            apiBaseUrl: API_BASE_URL,
+            chess: null,
+            isDragging: false,
+            legalMoves: [],
+            moveHistory: [],
+            lastMove: null,
+            isLoading: false,
+            highlightedSquares: new Set(),
+            currentMoveIndex: 0,
+            engineDepth: 15,
+            currentEvaluation: null,
+            isAnalyzing: false,
+            bestMove: null,
+            analysisHistory: [],
+            lichessService: new LichessService()
+        };
     },
-    getEvaluationBarStyle() {
-      if (this.currentEvaluation === null) return { height: '50%' };
 
-      const evalScore = Math.max(-5, Math.min(5, this.currentEvaluation));
-      const percentage = 50 + (evalScore * 8);
-      return {
-        height: `${percentage}%`,
-        background: this.currentEvaluation >= 0
-          ? 'linear-gradient(to bottom, #4ade80, #22c55e)'
-          : 'linear-gradient(to bottom, #f87171, #dc2626)'
-      };
-    }
-  },
+    computed: {
+        currentTurn() {
+            return this.chess ? this.chess.turn() : null;
+        },
+        getEvaluationBarStyle() {
+            if (this.currentEvaluation === null) return { height: '50%' };
 
-  async created() {
-    this.chess = new Chess();
-    this.fetchUserStats();
-    this.initializeBoardFromAPI();
-  },
-
-  methods: {
-    // Updated analyzePosition now uses the /api/analysis endpoint
-   analyzePosition: debounce(async function() {
-      if (this.isAnalyzing) return;
-      
-      this.isAnalyzing = true;
-      const fen = this.chess.fen();
-      
-      try {
-        const response = await fetch(`${this.apiBaseUrl}/api/analysis`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ fen, depth: this.engineDepth })
-        });
-        if (!response.ok) {
-          throw new Error('Analysis API call failed');
+            const evalScore = Math.max(-5, Math.min(5, this.currentEvaluation));
+            const percentage = 50 + (evalScore * 8);
+            return {
+                height: `${percentage}%`,
+                background: this.currentEvaluation >= 0
+                    ? 'linear-gradient(to bottom, #4ade80, #22c55e)'
+                    : 'linear-gradient(to bottom, #f87171, #dc2626)'
+            };
         }
-        const data = await response.json();
-        this.bestMove = data.bestMove;
-      } catch (error) {
-        console.error('Error analyzing position via API:', error);
-      }
-      this.isAnalyzing = false;
-    }, 500),
-
-    getEvaluationText() {
-      if (this.currentEvaluation === null) return 'Analyzing...';
-
-      const score = Math.abs(this.currentEvaluation);
-      const color = this.currentEvaluation > 0 ? 'White' : 'Black';
-
-      if (score > 5) {
-        return `${color} is winning (+${score.toFixed(1)})`;
-      } else if (score > 2) {
-        return `${color} has clear advantage (+${score.toFixed(1)})`;
-      } else if (score > 0.5) {
-        return `${color} is slightly better (+${score.toFixed(1)})`;
-      } else {
-        return 'Position is equal';
-      }
     },
 
-    async fetchUserStats() {
+    async created() {
+        this.chess = new Chess();
+        this.fetchUserStats();
+        this.initializeBoardFromAPI();
+    },
+
+    methods: {
+        analyzePosition: debounce(async function() {
+            if (this.isAnalyzing) return;
+            
+            this.isAnalyzing = true;
+            try {
+                const result = await this.lichessService.analyzePosition(this.chess.fen());
+                if (result.success) {
+                    this.currentEvaluation = result.score;
+                    this.bestMove = result.bestMove;
+                    
+                    // Add to analysis history
+                    this.analysisHistory.push({
+                        fen: this.chess.fen(),
+                        evaluation: result.score,
+                        depth: result.depth
+                    });
+                }
+            } catch (error) {
+                console.error('Analysis failed:', error);
+            } finally {
+                this.isAnalyzing = false;
+            }
+        }, 500),
+
+        // Rest of your methods remain the same
+        getEvaluationText() {
+            if (this.currentEvaluation === null) return 'Analyzing...';
+
+            const score = Math.abs(this.currentEvaluation);
+            const color = this.currentEvaluation > 0 ? 'White' : 'Black';
+
+            if (score > 5) {
+                return `${color} is winning (+${score.toFixed(1)})`;
+            } else if (score > 2) {
+                return `${color} has clear advantage (+${score.toFixed(1)})`;
+            } else if (score > 0.5) {
+                return `${color} is slightly better (+${score.toFixed(1)})`;
+            } else {
+                return 'Position is equal';
+            }
+        },
+
+        async fetchUserStats() {
       try {
         const response = await fetch(`${this.apiBaseUrl}/api/stats/${this.playerName}`);
         if (!response.ok) {
@@ -545,39 +575,36 @@ export default {
         message: 'Board reset'
       };
 
-      // Start analyzing new position
       this.analyzePosition();
     }
   }
 };
 
-// Utility function for debouncing
 function debounce(func, wait) {
-  let timeout;
-  return function executedFunction(...args) {
-    const later = () => {
-      clearTimeout(timeout);
-      func.apply(this, args);
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func.apply(this, args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
     };
-    clearTimeout(timeout);
-    timeout = setTimeout(later, wait);
-  };
 }
 </script>
 
 
+
 <style scoped>
-/* General container styling */
 .chess-container {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: start;
-  height: 300vh;
-  /* Adjust height to approximately 3 viewports */
+  height: 169vh; 
   width: 100%;
   background: linear-gradient(to bottom right, #1e293b, #0f172a);
-  color: #e5e7eb;
+  color: #0effcb;
   position: relative;
   overflow: hidden;
   padding: 20px 0;
@@ -590,7 +617,6 @@ function debounce(func, wait) {
   margin-top: 50px;
 }
 
-/* Chess Board Styling */
 
 .chess-board {
   width: 640px;
@@ -715,12 +741,13 @@ function debounce(func, wait) {
 
 
 
-/* Game Header */
 .game-header {
   display: flex;
   justify-content: space-between;
-  width: 100%;
-  padding: 20px;
+  width: 90%; /* Reduced from 100% */
+  max-width: 1200px;
+  margin: 20px auto; /* Center the header */
+  padding: 15px 30px;
   background: rgba(255, 255, 255, 0.1);
   border-radius: 10px;
   font-size: 18px;
@@ -777,15 +804,15 @@ function debounce(func, wait) {
 
 /* Move History */
 .move-history {
-  margin-top: 20px;
+  width: 90%;
+  max-width: 1200px;
+  margin: 20px auto;
   padding: 20px;
   background: rgba(255, 255, 255, 0.05);
   border-radius: 12px;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-  width: 100%;
-  max-width: 640px;
-  color: #f9fafb;
 }
+
 
 .moves-list span {
   padding: 6px 12px;
@@ -839,15 +866,18 @@ function debounce(func, wait) {
 }
 
 
-/* Add these to your existing CSS */
 
+/* Center the main board section */
 .board-and-analysis {
   display: flex;
-  gap: 20px;
+  gap: 30px;
   align-items: flex-start;
-  margin-bottom: 20px;
+  justify-content: center; /* Center the board horizontally */
+  margin: 30px auto;
+  width: 90%;
+  max-width: 1200px;
+  position: relative;
 }
-
 .analysis-panel {
   width: 280px;
   background: rgba(30, 41, 59, 0.8);
@@ -855,7 +885,6 @@ function debounce(func, wait) {
   padding: 20px;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
-
 .engine-status {
   height: 200px;
   display: flex;
@@ -882,17 +911,6 @@ function debounce(func, wait) {
   position: relative;
   overflow: hidden;
   margin-bottom: 15px;
-}
-
-.evaluation-bar {
-  position: absolute;
-  bottom: 0;
-  width: 100%;
-  background: linear-gradient(to bottom, #4ade80, #22c55e);
-  transition: height 0.3s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
 }
 
 .eval-value {
@@ -966,7 +984,6 @@ function debounce(func, wait) {
   color: white;
 }
 
-/* Responsive Design */
 @media screen and (max-width: 1200px) {
   .board-and-analysis {
     flex-direction: column;
@@ -1001,4 +1018,45 @@ function debounce(func, wait) {
 .retry-btn:hover {
   background: #2563eb;
 }
+
+
+.vertical-eval-bar {
+  position: absolute;
+  left: -30px;
+  top: 30px;
+  height: calc(100% - 60px);
+  width: 20px;
+  background: #1e293b;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+
+.eval-bar-container {
+  position: relative;
+  height: 100%;
+  width: 100%;
+}
+
+.eval-bar {
+  position: absolute;
+  bottom: 50%; /* Start at middle */
+  width: 100%;
+  background: linear-gradient(to bottom, #4ade80, #22c55e);
+  transition: height 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.eval-number {
+  position: absolute;
+  right: 24px; /* Position outside the bar */
+  font-size: 12px;
+  color: #f8fafc;
+  font-weight: bold;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+  white-space: nowrap;
+}
+
 </style>

@@ -1,168 +1,70 @@
-// chess-stockfish.js
-const { spawn } = require('child_process');
-const path = require('path');
-const fs = require('fs');
+// chess-lichess.js
+const fetch = require('node-fetch'); // Make sure to install: npm install node-fetch
 
-class StockfishEngine {
+class LichessEngine {
     constructor() {
-        this.process = null;
-        this.isReady = false;
-        this.callbacks = new Map();
-        
-        // Find the stockfish executable
-        const engineDir = path.join(__dirname, 'engines');
-        const entries = fs.readdirSync(engineDir);
-        const stockfishDir = entries.find(entry => entry.startsWith('stockfish'));
-        
-        if (!stockfishDir) {
-            throw new Error('Stockfish directory not found in engines/');
-        }
-
-        this.enginePath = path.join(engineDir, stockfishDir, 'stockfish');
-        
-        if (!fs.existsSync(this.enginePath)) {
-            // Try alternate path
-            this.enginePath = path.join(engineDir, stockfishDir, 'bin', 'stockfish');
-            
-            if (!fs.existsSync(this.enginePath)) {
-                throw new Error('Stockfish executable not found');
-            }
-        }
-        
-        console.log('[Stockfish] Found engine at:', this.enginePath);
+        this.baseUrl = 'https://lichess.org/api';
+        this.token = 'lip_2iBBN7H4Hs38jGw5bLlZ';  //put yr own, i will rmeove mine when i push give the code.
+        this.isReady = true;
     }
 
     init() {
-        return new Promise((resolve, reject) => {
-            try {
-                console.log('[Stockfish] Starting engine...');
-                this.process = spawn(this.enginePath, {
-                    stdio: ['pipe', 'pipe', 'pipe']
-                });
-
-                this.process.stdout.on('data', (data) => {
-                    const lines = data.toString().trim().split('\n');
-                    lines.forEach(line => this.handleEngineOutput(line));
-                });
-
-                this.process.stderr.on('data', (data) => {
-                    console.error('[Stockfish] Error:', data.toString());
-                });
-
-                this.process.on('error', (error) => {
-                    console.error('[Stockfish] Process error:', error);
-                    reject(error);
-                });
-
-                this.process.on('close', (code) => {
-                    console.log('[Stockfish] Process closed with code:', code);
-                    this.isReady = false;
-                });
-
-                // Initialize UCI
-                this.sendCommand('uci');
-
-                // Wait for engine to be ready
-                this.callbacks.set('init', {
-                    resolve,
-                    reject,
-                    timeout: setTimeout(() => {
-                        this.callbacks.delete('init');
-                        reject(new Error('Engine initialization timeout'));
-                    }, 10000)
-                });
-
-            } catch (error) {
-                console.error('[Stockfish] Initialization error:', error);
-                reject(error);
-            }
-        });
+        return Promise.resolve();
     }
 
-    handleEngineOutput(line) {
-        console.log('[Stockfish] ←', line);
-
-        if (line === 'uciok') {
-            this.sendCommand('isready');
-        }
-        else if (line === 'readyok') {
-            const init = this.callbacks.get('init');
-            if (init) {
-                clearTimeout(init.timeout);
-                this.callbacks.delete('init');
-                this.isReady = true;
-                init.resolve();
-            }
-        }
-        else if (line.includes('bestmove')) {
-            const analysis = this.callbacks.get('analysis');
-            if (analysis) {
-                clearTimeout(analysis.timeout);
-                this.callbacks.delete('analysis');
-                
-                const bestMove = line.split('bestmove ')[1].split(' ')[0];
-                analysis.resolve({
-                    bestMove,
-                    score: analysis.score,
-                    fen: analysis.fen
-                });
-            }
-        }
-        else if (line.includes('score cp')) {
-            const analysis = this.callbacks.get('analysis');
-            if (analysis) {
-                const match = line.match(/score cp ([-\d]+)/);
-                if (match) {
-                    analysis.score = parseInt(match[1]) / 100;
+    async analyzePosition(fen, depth = 15) {
+        try {
+            console.log('[Lichess] Analyzing position:', fen);
+            
+            const response = await fetch(
+                `${this.baseUrl}/cloud-eval?fen=${encodeURIComponent(fen)}&multiPv=1`, 
+                {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${this.token}`,
+                        'Accept': 'application/json'
+                    }
                 }
-            }
-        }
-    }
+            );
 
-    sendCommand(cmd) {
-        if (this.process && this.process.stdin.writable) {
-            console.log('[Stockfish] →', cmd);
-            this.process.stdin.write(cmd + '\n');
-        }
-    }
-
-    analyzePosition(fen, depth = 15) {
-        return new Promise((resolve, reject) => {
-            if (!this.isReady) {
-                reject(new Error('Engine not ready'));
-                return;
+            if (!response.ok) {
+                throw new Error(`Lichess API error: ${response.status}`);
             }
 
-            this.callbacks.set('analysis', {
-                resolve,
-                reject,
-                fen,
-                score: null,
-                timeout: setTimeout(() => {
-                    this.callbacks.delete('analysis');
-                    reject(new Error('Analysis timeout'));
-                }, 30000)
-            });
+            const data = await response.json();
+            console.log('[Lichess] Analysis result:', data);
 
-            this.sendCommand('position fen ' + fen);
-            this.sendCommand('go depth ' + depth);
-        });
+            // Convert Lichess format to match your existing format
+            return {
+                bestMove: data.pvs[0].moves.split(' ')[0],
+                score: data.pvs[0].cp / 100, // Convert centipawns to pawns
+                fen: fen,
+                depth: data.depth
+            };
+
+        } catch (error) {
+            console.error('[Lichess] Analysis error:', error);
+            
+            // If Lichess cloud analysis is not available, return a neutral evaluation
+            return {
+                bestMove: null,
+                score: 0,
+                fen: fen,
+                depth: 0
+            };
+        }
     }
 
     quit() {
-        if (this.process) {
-            this.sendCommand('quit');
-            this.process.kill();
-            this.process = null;
-            this.isReady = false;
-        }
+        // No cleanup needed
+        return Promise.resolve();
     }
 }
 
-const engine = new StockfishEngine();
+const engine = new LichessEngine();
 
 module.exports = {
-    initializeStockfish: () => engine.init(),
+    initializeStockfish: () => engine.init(), // Keep same function names for compatibility
     analyzePosition: (fen, depth) => engine.analyzePosition(fen, depth),
     quitStockfish: () => engine.quit(),
     isEngineReady: () => engine.isReady

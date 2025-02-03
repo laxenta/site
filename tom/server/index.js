@@ -1,5 +1,3 @@
-// In your main server file (e.g., index.js) or chess-server.js
-
 const express = require('express');
 const cors = require('cors');
 const chessServer = require('./chess-server'); //for loading fen's and all  : 3
@@ -8,7 +6,6 @@ const stockfish = require('./chess-stockfish');
 const app = express();
 const port = process.env.PORT || 5050;
 
-// CORS configuration
 app.use(
   cors({
     origin: '*', // https://cuddly-rotary-phone-q744jwxwpw9qfxvjx-5051.app.github.dev
@@ -19,26 +16,20 @@ app.use(
 );
 
 app.use(express.json());
-
-// Debugging middleware
 app.use((req, res, next) => {
   console.log(`[DEBUG] ${new Date().toISOString()} - ${req.method} ${req.url}`);
   next();
 });
 
-
-// Initialize the chess server
 chessServer.initializeServer()
   .then(() => console.log('[DEBUG] Chess server initialized successfully'))
   .catch(err => console.error('[DEBUG] Failed to initialize chess server:', err));
 
-// Initialize Stockfish engine on server startup
 stockfish.initializeStockfish()
   .then(() => console.log('[DEBUG] Stockfish engine initialized successfully'))
   .catch(err => console.error('[DEBUG] Failed to initialize Stockfish engine:', err));
 
 // API Routes
-// Create new puzzle game
 app.post('/api/puzzle/new', (req, res) => {
   try {
     const { playerId, targetRating } = req.body;
@@ -54,8 +45,7 @@ app.post('/api/puzzle/new', (req, res) => {
     res.status(500).json({ error: error.message, code: error.code });
   }
 });
-
-// Make a move
+//move handling. 
 app.post('/api/puzzle/:gameId/move', (req, res) => {
   try {
     const { gameId } = req.params;
@@ -117,7 +107,7 @@ app.get('/api/analysis/status', (req, res) => {
     });
 });
 
-// NEW: Analyze a position using Stockfish
+// NEW: Analyze a position using Stockfish ( did not work out well, thier pckg outdated ig)
 app.post('/api/analysis', async (req, res) => {
     console.log('[DEBUG] Received analysis request:', req.body);
     
@@ -176,9 +166,7 @@ app.get('/', (req, res) => {
   });
 });
 
-
-// Move your 404 handler to be the LAST route
-// All your other routes should be BEFORE this
+// 404 hnalding 
 app.use((req, res) => {
     console.log(`[DEBUG] 404 Not Found: ${req.method} ${req.url}`);
     res.status(404).json({ 
@@ -211,4 +199,4 @@ process.on('SIGTERM', () => {
   });
 });
 
-module.exports = server; // For testing purposes
+module.exports = server; //testis

@@ -7,11 +7,6 @@ module.exports = defineConfig({
   devServer: {
     port: 8080,
     allowedHosts: 'all',
-    headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Cross-Origin-Opener-Policy': 'same-origin',
-      'Cross-Origin-Embedder-Policy': 'require-corp'
-    },
     client: {
       webSocketURL: {
         protocol: process.env.HTTPS === 'true' ? 'wss' : 'ws',

@@ -122,8 +122,7 @@ const API_BASE_URL = 'https://cuddly-rotary-phone-q744jwxwpw9qfxvjx-5050.app.git
 const generatePlayerName = () => {
   const adjectives = ['Clever', 'Swift', 'Tactical', 'Strategic', 'Bold', 'Sneaky', 'Patient'];
   const pieces = ['Pawn', 'Knight', 'Bishop', 'Rook', 'Queen', 'King'];
-  return `${adjectives[Math.floor(Math.random() * adjectives.length)]}${pieces[Math.floor(Math.random() * pieces.length)]
-    }${Math.floor(Math.random() * 1000)}`;
+  return `${adjectives[Math.floor(Math.random() * adjectives.length)]}${pieces[Math.floor(Math.random() * pieces.length)]}${Math.floor(Math.random() * 1000)}`;
 };
 
 export default {
@@ -155,13 +154,11 @@ export default {
       lastMove: null,
       isLoading: false,
       highlightedSquares: new Set(),
-      // Stockfish related data
+      // Analysis related data
       currentMoveIndex: 0,
-      stockfish: null,
       engineDepth: 15,
       currentEvaluation: null,
       isAnalyzing: false,
-      engineReady: false,
       bestMove: null,
       analysisHistory: [],
     };
@@ -174,7 +171,6 @@ export default {
     getEvaluationBarStyle() {
       if (this.currentEvaluation === null) return { height: '50%' };
 
-      // Convert evaluation to percentage (clamp between 10% and 90%)
       const evalScore = Math.max(-5, Math.min(5, this.currentEvaluation));
       const percentage = 50 + (evalScore * 8);
       return {
@@ -188,170 +184,36 @@ export default {
 
   async created() {
     this.chess = new Chess();
-    await this.verifyStockfishFiles();
-    await this.initializeStockfish();
-    await this.initializeEngine(); //js added 
     this.fetchUserStats();
     this.initializeBoardFromAPI();
   },
 
-  beforeDestroy() {
-    if (this.stockfish) {
-      this.stockfish.postMessage('quit');
-    }
-  },
-
   methods: {
-    async initializeStockfish() {
-  try {
-    console.log('Starting Stockfish initialization...');
-    
-    this.stockfish = new Worker('/stockfish.worker.js', {
-      type: 'classic'
-    });
-
-    console.log('Worker created, setting up message handlers...');
-
-    // Create a promise to wait for engine ready
-    const engineReady = new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        reject(new Error('Stockfish initialization timeout'));
-      }, 10000); // 10 second timeout
-
-      this.stockfish.onmessage = (event) => {
-        const message = event.data;
-        console.log('Worker message received:', message);
-
-        if (message === 'ready') {
-          console.log('Engine ready, initializing game...');
-          clearTimeout(timeout);
-          this.engineReady = true;
-          resolve();
-        } else if (typeof message === 'string') {
-          // Handle other messages
-          if (message.includes('bestmove')) {
-            this.isAnalyzing = false;
-            const bestMove = message.split(' ')[1];
-            this.bestMove = bestMove;
-          }
-          else if (message.includes('score cp')) {
-            const scoreMatch = message.match(/score cp ([-\d]+)/);
-            if (scoreMatch) {
-              const score = parseInt(scoreMatch[1]) / 100;
-              this.currentEvaluation = score;
-            }
-          }
+    // Updated analyzePosition now uses the /api/analysis endpoint
+   analyzePosition: debounce(async function() {
+      if (this.isAnalyzing) return;
+      
+      this.isAnalyzing = true;
+      const fen = this.chess.fen();
+      
+      try {
+        const response = await fetch(`${this.apiBaseUrl}/api/analysis`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ fen, depth: this.engineDepth })
+        });
+        if (!response.ok) {
+          throw new Error('Analysis API call failed');
         }
-      };
-    });
-
-    this.stockfish.onerror = (error) => {
-      console.error('Stockfish worker error:', error);
-      this.engineReady = false;
-    };
-
-    // Wait for engine to be ready before sending commands
-    await engineReady;
-    
-    // Now initialize the engine
-    console.log('Initializing engine settings...');
-    const commands = [
-      'uci',
-      'setoption name MultiPV value 1',
-      'setoption name Threads value 1',
-      'setoption name Hash value 16',
-      'ucinewgame',
-      'isready'
-    ];
-    
-    for (const cmd of commands) {
-      console.log('Sending command:', cmd);
-      this.stockfish.postMessage(cmd);
-      // Add small delay between commands
-      await new Promise(resolve => setTimeout(resolve, 100));
-    }
-
-  } catch (error) {
-    console.error('Error in Stockfish initialization:', error);
-    this.engineReady = false;
-  }
-},
-
-
-initializeEngine() {
-  console.log('Initializing engine settings...');
-  const commands = [
-    'setoption name MultiPV value 1',
-    'setoption name Threads value 1',
-    'setoption name Hash value 16',
-    'ucinewgame'
-  ];
-  
-  commands.forEach(cmd => {
-    console.log('Sending command:', cmd);
-    this.stockfish.postMessage(cmd);
-  });
-},
-
-// veryfiy stockfish files 
-async verifyStockfishFiles() {
-  console.time('stockfish-init');
-  try {
-    const files = ['/stockfish.worker.js', '/stockfish.wasm'];
-    for (const file of files) {
-      console.log(`Verifying ${file}...`);
-      const response = await fetch(file);
-      if (!response.ok) {
-        console.error(`Failed to load ${file}:`, response.status, response.statusText);
-      } else {
-        console.log(`Successfully verified ${file}`);
+        const data = await response.json();
+        this.bestMove = data.bestMove;
+      } catch (error) {
+        console.error('Error analyzing position via API:', error);
       }
-    }
-  } catch (error) {
-    console.error('Error verifying Stockfish files:', error);
-  }
-  console.timeEnd('stockfish-init');
-},
-
-    handleStockfishMessage(event) {
-      const message = event.data;
-
-      if (message === 'readyok') {
-        this.engineReady = true;
-      }
-      else if (message.includes('bestmove')) {
-        this.isAnalyzing = false;
-        const bestMove = message.split(' ')[1];
-        this.bestMove = bestMove;
-      }
-      else if (message.includes('score cp')) {
-        const scoreMatch = message.match(/score cp ([-\d]+)/);
-        if (scoreMatch) {
-          const score = parseInt(scoreMatch[1]) / 100;
-          this.currentEvaluation = score;
-
-          if (this.moveHistory.length > 0) {
-            const lastMove = this.moveHistory[this.moveHistory.length - 1];
-            this.analysisHistory.push({
-              move: lastMove,
-              evaluation: score,
-              bestMove: this.bestMove
-            });
-          }
-        }
-      }
-    },
-
-    analyzePosition: debounce(function() {
-  if (!this.engineReady || this.isAnalyzing) return;
-  
-  this.isAnalyzing = true;
-  const fen = this.chess.fen();
-  
-  // Send position and analysis command
-  this.stockfish.postMessage(`position fen ${fen}`);
-  this.stockfish.postMessage(`go depth ${this.engineDepth}`);
-}, 500),
+      this.isAnalyzing = false;
+    }, 500),
 
     getEvaluationText() {
       if (this.currentEvaluation === null) return 'Analyzing...';
@@ -457,7 +319,6 @@ async verifyStockfishFiles() {
         row.map(square => {
           if (!square) return null;
           const piece = square.type.toLowerCase();
-          //const color = square.color === 'w' ? 'w' : 'b';
           return this.pieceMap[square.color === 'w' ? piece.toUpperCase() : piece];
         })
       );
@@ -495,7 +356,6 @@ async verifyStockfishFiles() {
             type: 'success',
             message: `Checkmate! ${winner} wins!`
           };
-          // Optionally disable further moves
           this.gameEnded = true;
         } else if (this.chess.isDraw()) {
           this.moveStatus = {
@@ -511,7 +371,7 @@ async verifyStockfishFiles() {
           this.gameEnded = true;
         }
 
-        // Start position analysis
+        // Start position analysis (now via API)
         this.analyzePosition();
 
         // Notify the API but don't wait for response
@@ -552,23 +412,22 @@ async verifyStockfishFiles() {
     },
 
     handleDrop(event, toRankIndex, toFileIndex) {
-  event.preventDefault();
-  const fromSquare = event.dataTransfer.getData('text/plain');
-  
-  // Add validation
-  if (!toRankIndex !== undefined && toFileIndex !== undefined) {
-    const toSquare = this.getSquareNotation(toRankIndex, toFileIndex);
-    console.log('Move attempt:', { from: fromSquare, to: toSquare }); // Debug log
-    
-    if (fromSquare && toSquare) {
-      this.makeMove(fromSquare, toSquare);
-    }
-  }
+      event.preventDefault();
+      const fromSquare = event.dataTransfer.getData('text/plain');
+      
+      // Add validation
+      if (!toRankIndex !== undefined && toFileIndex !== undefined) {
+        const toSquare = this.getSquareNotation(toRankIndex, toFileIndex);
+        console.log('Move attempt:', { from: fromSquare, to: toSquare });
+        if (fromSquare && toSquare) {
+          this.makeMove(fromSquare, toSquare);
+        }
+      }
 
-  this.isDragging = false;
-  this.selectedSquare = null;
-  this.highlightedSquares.clear();
-},
+      this.isDragging = false;
+      this.selectedSquare = null;
+      this.highlightedSquares.clear();
+    },
 
     async handleSquareClick(rankIndex, fileIndex) {
       if (!this.selectedSquare) {
@@ -590,7 +449,6 @@ async verifyStockfishFiles() {
         }
 
         await this.makeMove(fromSquare, toSquare);
-
         this.selectedSquare = null;
         this.highlightedSquares.clear();
       }
@@ -706,6 +564,7 @@ function debounce(func, wait) {
   };
 }
 </script>
+
 
 <style scoped>
 /* General container styling */

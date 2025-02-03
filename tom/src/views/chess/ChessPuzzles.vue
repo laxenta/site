@@ -2,8 +2,14 @@
   <div class="chess-container">
     <!-- Header -->
     <div class="game-header">
-      <div class="player-info">Player: {{ playerName }}</div>
-      <div class="puzzle-rating">Rating: {{ puzzleRating }}</div>
+      <div class="header-left">
+        <div class="player-info">Player: {{ playerName }}</div>
+        <div class="puzzle-rating">Rating: {{ puzzleRating }}</div>
+      </div>
+      <div class="header-right">
+        <div class="user-info">{{ currentUser }}</div>
+        <div class="current-time">{{ formattedDateTime }}</div>
+      </div>
     </div>
 
     <!-- Main board and analysis section -->
@@ -32,28 +38,19 @@
 
           <div class="board">
             <div v-for="(row, rankIndex) in boardMatrix" :key="rankIndex" class="board-row">
-              <div v-for="(square, fileIndex) in row" 
-                   :key="`${rankIndex}-${fileIndex}`" 
-                   :class="[
+              <div v-for="(square, fileIndex) in row" :key="`${rankIndex}-${fileIndex}`" :class="[
                      'square',
                      getSquareColor(rankIndex, fileIndex),
                      { 'square-selected': isSquareSelected(rankIndex, fileIndex) },
                      { 'square-highlight': isHighlightedSquare(rankIndex, fileIndex) },
                      { 'square-last-move': isLastMoveSquare(rankIndex, fileIndex) }
-                   ]"
-                   @click="handleSquareClick(rankIndex, fileIndex)"
-                   @dragover.prevent
-                   @drop="handleDrop($event, rankIndex, fileIndex)">
-                <div v-if="square" 
-                     class="piece" 
-                     :class="[
+                   ]" @click="handleSquareClick(rankIndex, fileIndex)" @dragover.prevent
+                @drop="handleDrop($event, rankIndex, fileIndex)">
+                <div v-if="square" class="piece" :class="[
                        { 'piece-animated': isAnimated },
                        { 'piece-draggable': canDragPiece(rankIndex, fileIndex) }
-                     ]"
-                     :style="getPieceStyle(square)"
-                     draggable="true"
-                     @dragstart="handleDragStart($event, rankIndex, fileIndex)"
-                     @dragend="handleDragEnd">
+                     ]" :style="getPieceStyle(square)" draggable="true"
+                  @dragstart="handleDragStart($event, rankIndex, fileIndex)" @dragend="handleDragEnd">
                 </div>
               </div>
             </div>
@@ -62,8 +59,12 @@
 
         <!-- Controls -->
         <div class="game-controls">
-          <div class="move-status" :class="moveStatus.type">
-            {{ moveStatus.message }}
+          <!-- Replace your existing move-status div in the game-controls section -->
+          <div class="move-status" :class="[
+            moveStatus.type,
+            chess?.turn() === 'w' ? 'white-turn' : 'black-turn'
+          ]">
+            {{ getMoveStatusMessage() }}
           </div>
           <button class="control-btn new-puzzle" @click="initializeBoardFromAPI" :disabled="isLoading">
             New Puzzle
@@ -99,9 +100,8 @@
     <div class="move-history" v-if="moveHistory.length">
       <h3>Moves with Analysis</h3>
       <div class="moves-list">
-        <span v-for="(move, index) in moveHistory" 
-              :key="index" 
-              :class="['move-entry', { 'current-move': currentMoveIndex === index }]">
+        <span v-for="(move, index) in moveHistory" :key="index"
+          :class="['move-entry', { 'current-move': currentMoveIndex === index }]">
           {{ formatMove(move, index) }}
         </span>
       </div>
@@ -191,6 +191,7 @@ export default {
             isAnalyzing: false,
             bestMove: null,
             analysisHistory: [],
+
             lichessService: new LichessService()
         };
     },
@@ -327,7 +328,16 @@ export default {
         this.isLoading = false;
       }
     },
-
+// just added
+    getMoveStatusMessage() {
+  if (this.gameEnded) {
+    return this.moveStatus.message;
+  }
+  
+  const turn = this.chess?.turn();
+  const color = turn === 'w' ? 'White' : 'Black';
+  return `${color} to move`;
+},
     initializeBoard(fen) {
       if (!fen) {
         this.boardMatrix = Array(8).fill().map(() => Array(8).fill(null));
@@ -593,8 +603,6 @@ function debounce(func, wait) {
 }
 </script>
 
-
-
 <style scoped>
 .chess-container {
   display: flex;
@@ -617,21 +625,19 @@ function debounce(func, wait) {
   margin-top: 50px;
 }
 
-
 .chess-board {
   width: 640px;
   height: 640px;
+  margin-left: 5px;
   background: #2a2a2a;
-  border-radius: 12px;
-  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.4);
+  border-radius: 2px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
   position: relative;
 }
-
-/* Smooth board entry animation */
 @keyframes fadeIn {
   from {
     opacity: 0;
-    transform: scale(0.9);
+    transform: scale(1.9);
   }
 
   to {
@@ -655,7 +661,7 @@ function debounce(func, wait) {
   position: absolute;
   display: flex;
   justify-content: space-between;
-  font-size: 18px;
+  font-size: 12px;
   font-weight: bold;
   color: #cbd5e1;
 }
@@ -704,9 +710,8 @@ function debounce(func, wait) {
   box-shadow: inset 0 0 0 3px rgba(255, 255, 0, 0.5);
 }
 
-/* Selected square */
 .square-selected {
-  background-color: rgba(42, 157, 143, 0.8);
+  background-color: rgba(6, 255, 97, 0.8);
   box-shadow: inset 0 0 0 3px #2a9d8f;
 }
 
@@ -717,7 +722,6 @@ function debounce(func, wait) {
   margin-top: 20px;
 }
 
-/* Highlighted legal move dots */
 .square-highlight::after {
   content: '';
   width: 12%;
@@ -735,18 +739,16 @@ function debounce(func, wait) {
   background-size: contain;
   background-position: center;
   background-repeat: no-repeat;
-  cursor: grab;
+  cursor: grab; /* let people ggrab those lil pieces fr will change this to something cool if got time*/
   transition: transform 0.3s ease-in-out;
 }
-
-
 
 .game-header {
   display: flex;
   justify-content: space-between;
-  width: 90%; /* Reduced from 100% */
+  width: 300%; 
   max-width: 1200px;
-  margin: 20px auto; /* Center the header */
+  margin: 20px auto; 
   padding: 15px 30px;
   background: rgba(255, 255, 255, 0.1);
   border-radius: 10px;
@@ -756,26 +758,25 @@ function debounce(func, wait) {
 
 .player-info,
 .puzzle-rating {
-  color: #f8fafc;
+  color: #fcf8fb;
 }
 
-/* Game Controls */
 .game-controls {
   display: flex;
   justify-content: space-around;
-  margin: 20px 0;
-  width: 100%;
+  margin: 20px 5;
+  width: 95%;
 }
-
+/* if bts look ugly change them from here, considering idh much time so i write her jus in case someone tried to find it*/
 .control-btn {
-  padding: 12px 20px;
-  border-radius: 8px;
-  background: linear-gradient(to right, #3b82f6, #2563eb);
+  padding: 4px 28px;
+  border-radius: 12px;
+  background: linear-gradient(to right, #babec9, #111211);
   color: #ffffff;
-  font-size: 16px;
+  font-size: 15px;
   font-weight: bold;
   border: none;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
   transition: all 0.3s ease-in-out;
 }
 
@@ -865,19 +866,17 @@ function debounce(func, wait) {
   }
 }
 
-
-
-/* Center the main board section */
 .board-and-analysis {
   display: flex;
   gap: 30px;
   align-items: flex-start;
-  justify-content: center; /* Center the board horizontally */
+  justify-content: center;
   margin: 30px auto;
   width: 90%;
   max-width: 1200px;
   position: relative;
 }
+
 .analysis-panel {
   width: 280px;
   background: rgba(30, 41, 59, 0.8);
@@ -893,13 +892,13 @@ function debounce(func, wait) {
 }
 
 .status-indicator {
-  color: #60a5fa;
+  color: #27fa38;
   font-size: 16px;
   text-align: center;
 }
 
 .engine-analysis h3 {
-  color: #f8fafc;
+  color: #0c6ccb;
   margin-bottom: 15px;
   font-size: 18px;
 }
@@ -913,14 +912,6 @@ function debounce(func, wait) {
   margin-bottom: 15px;
 }
 
-.eval-value {
-  color: #f8fafc;
-  font-size: 14px;
-  font-weight: bold;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
-  padding: 4px 8px;
-}
-
 .analysis-info {
   padding: 10px;
   background: rgba(255, 255, 255, 0.05);
@@ -931,14 +922,14 @@ function debounce(func, wait) {
   display: flex;
   align-items: center;
   gap: 10px;
-  color: #60a5fa;
+  color: #bfd1e7;
   font-style: italic;
 }
 
 .analyzing-spinner {
   width: 16px;
   height: 16px;
-  border: 2px solid #60a5fa;
+  border: 2px solid #eeeeee;
   border-top-color: transparent;
   border-radius: 50%;
   animation: spin 1s linear infinite;
@@ -1005,11 +996,11 @@ function debounce(func, wait) {
 }
 
 .retry-btn {
-  margin-top: 10px;
-  padding: 8px 16px;
+  margin-top: 3px;
+  padding: 2px 4px;
   background: #3b82f6;
   border: none;
-  border-radius: 4px;
+  border-radius: 2px;
   color: white;
   cursor: pointer;
   transition: background 0.2s;
@@ -1019,18 +1010,17 @@ function debounce(func, wait) {
   background: #2563eb;
 }
 
-
 .vertical-eval-bar {
   position: absolute;
   left: -30px;
   top: 30px;
   height: calc(100% - 60px);
-  width: 20px;
+  width: 25px;
   background: #1e293b;
   border-radius: 4px;
   overflow: hidden;
+  z-index: 1;
 }
-
 
 .eval-bar-container {
   position: relative;
@@ -1040,23 +1030,60 @@ function debounce(func, wait) {
 
 .eval-bar {
   position: absolute;
-  bottom: 50%; /* Start at middle */
+  bottom: 0;
   width: 100%;
-  background: linear-gradient(to bottom, #4ade80, #22c55e);
   transition: height 0.3s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  background: linear-gradient(to bottom, #4ade80, #22c55e);
 }
 
 .eval-number {
   position: absolute;
-  right: 24px; /* Position outside the bar */
+  right: 30px;
   font-size: 12px;
-  color: #f8fafc;
+  color: #ffffff;
   font-weight: bold;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
   white-space: nowrap;
 }
 
+/* Optional: Add some padding to the board container to ensure proper spacing */
+.board-and-controls {
+  padding-left: 20px; /* Add padding to account for eval bar */
+}
+
+.move-status {
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: bold;
+    margin-bottom: 15px;
+    color: #ffffff;
+    text-align: center;
+    transition: all 0.3s ease;
+    min-width: 200px;
+}
+
+.white-turn {
+    background: linear-gradient(to right, #f3f4f6, #d1d5db);
+    color: #1f2937;
+    border: 2px solid #e5e7eb;
+}
+
+.black-turn {
+    background: linear-gradient(to right, #1f2937, #111827);
+    color: #ffffff;
+    border: 2px solid #374151;
+}
+
+.move-status.success {
+    background: linear-gradient(to right, #34d399, #10b981);
+    color: #ffffff;
+    border: 2px solid #059669;
+}
+
+.move-status.error {
+    background: linear-gradient(to right, #ef4444, #dc2626);
+    color: #ffffff;
+    border: 2px solid #b91c1c;
+}
 </style>

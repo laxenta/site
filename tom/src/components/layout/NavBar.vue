@@ -1,12 +1,5 @@
 <template>
   <nav class="navbar" :class="{'collapsed': isCollapsed}" @mouseenter="expandNavbar" @mouseleave="collapseNavbar">
-    <!-- Background Media (Video or GIF) -->
-    <div class="navbar-background">
-      <video v-if="isVideoBackground" autoplay loop muted playsinline class="background-media">
-        <source :src="backgroundUrl" type="video/mp4">
-      </video>
-      <img v-else :src="backgroundUrl" alt="Navbar background" class="background-media" />
-    </div>
     <!-- Collapse Button -->
     <div class="collapse-button" @click="toggleCollapse">
       <span v-if="isCollapsed">🖳</span>
@@ -290,6 +283,4 @@ export default {
   background-color: rgba(0, 0, 0, 0.2);
   border-radius: 5px;
 }
-
-
 </style>

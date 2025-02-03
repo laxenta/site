@@ -38,6 +38,9 @@ importers:
       csv-parser:
         specifier: 3.1.0
         version: 3.1.0
+      emscripten:
+        specifier: 0.0.2-beta
+        version: 0.0.2-beta
       express:
         specifier: 4.21.2
         version: 4.21.2
@@ -2012,6 +2015,10 @@ packages:
   emojis-list@3.0.0:
     resolution: {integrity: sha512-/kyM18EfinwXZbno9FyUGeFh87KC8HRQBQGildHZbEuRyWFOmv1U10o9BBp8XVZDVNNuQKyIGIu5ZYAAXJ0V2Q==}
     engines: {node: '>= 4'}
+
+  emscripten@0.0.2-beta:
+    resolution: {integrity: sha512-bckLzZ9n/GhNB4NwE23frASTc0hB7EyrY9ykys+Ou5wKupOROtEzkeWqxoGmWYQVNbidSW5UYsHwo8hhCuqbKg==}
+    hasBin: true
 
   encodeurl@1.0.2:
     resolution: {integrity: sha512-TPJXq8JqFaVYm2CWmPvnP2Iyo4ZSM7/QKcSmuMLDObfpH5fi7RUGmd/rTDf+rut/saiDiQEeVTNgAmJEdAOx0w==}
@@ -6767,6 +6774,8 @@ snapshots:
   emoji-regex@8.0.0: {}
 
   emojis-list@3.0.0: {}
+
+  emscripten@0.0.2-beta: {}
 
   encodeurl@1.0.2: {}
 

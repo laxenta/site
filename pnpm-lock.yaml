@@ -1,0 +1,23 @@
+lockfileVersion: '9.0'
+
+settings:
+  autoInstallPeers: true
+  excludeLinksFromLockfile: false
+
+importers:
+
+  .:
+    dependencies:
+      stockfish:
+        specifier: ^16.0.0
+        version: 16.0.0
+
+packages:
+
+  stockfish@16.0.0:
+    resolution: {integrity: sha512-uu4AqsE2x0tD+SsYzZy4UtqeH4U9zDi1V8loDFDbMwCtvumGXF9j81Pg1ZmIkUgZhwQqPxQAv8IN5oy6hZa7Bw==}
+    hasBin: true
+
+snapshots:
+
+  stockfish@16.0.0: {}

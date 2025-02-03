@@ -1,113 +1,169 @@
+// chess-stockfish.js
+const { spawn } = require('child_process');
 const path = require('path');
-const { Worker } = require('worker_threads');
+const fs = require('fs');
 
-let engine = null;
-let isReady = false;
+class StockfishEngine {
+    constructor() {
+        this.process = null;
+        this.isReady = false;
+        this.callbacks = new Map();
+        
+        // Find the stockfish executable
+        const engineDir = path.join(__dirname, 'engines');
+        const entries = fs.readdirSync(engineDir);
+        const stockfishDir = entries.find(entry => entry.startsWith('stockfish'));
+        
+        if (!stockfishDir) {
+            throw new Error('Stockfish directory not found in engines/');
+        }
 
-function initializeStockfish() {
-    return new Promise((resolve, reject) => {
-        try {
-            const workerPath = path.join(__dirname, './stockfish-node-worker.js');
-            console.log('[Stockfish] Creating worker from:', workerPath);
+        this.enginePath = path.join(engineDir, stockfishDir, 'stockfish');
+        
+        if (!fs.existsSync(this.enginePath)) {
+            // Try alternate path
+            this.enginePath = path.join(engineDir, stockfishDir, 'bin', 'stockfish');
             
-            engine = new Worker(workerPath);
+            if (!fs.existsSync(this.enginePath)) {
+                throw new Error('Stockfish executable not found');
+            }
+        }
+        
+        console.log('[Stockfish] Found engine at:', this.enginePath);
+    }
 
-            const timeout = setTimeout(() => {
-                if (!isReady) {
-                    reject(new Error('Engine initialization timeout'));
-                }
-            }, 30000);
+    init() {
+        return new Promise((resolve, reject) => {
+            try {
+                console.log('[Stockfish] Starting engine...');
+                this.process = spawn(this.enginePath, {
+                    stdio: ['pipe', 'pipe', 'pipe']
+                });
 
-            engine.on('message', (msg) => {
-                console.log('[Stockfish] Worker message:', msg);
-                
-                if (msg === 'ready') {
-                    console.log('[Stockfish] Engine ready');
-                    isReady = true;
-                    clearTimeout(timeout);
-                    resolve();
-                } else if (typeof msg === 'string' && msg.startsWith('error:')) {
-                    console.error('[Stockfish] Error:', msg.substring(7));
-                    clearTimeout(timeout);
-                    reject(new Error(msg.substring(7)));
-                }
-            });
+                this.process.stdout.on('data', (data) => {
+                    const lines = data.toString().trim().split('\n');
+                    lines.forEach(line => this.handleEngineOutput(line));
+                });
 
-            engine.on('error', (error) => {
-                console.error('[Stockfish] Worker error:', error);
-                clearTimeout(timeout);
+                this.process.stderr.on('data', (data) => {
+                    console.error('[Stockfish] Error:', data.toString());
+                });
+
+                this.process.on('error', (error) => {
+                    console.error('[Stockfish] Process error:', error);
+                    reject(error);
+                });
+
+                this.process.on('close', (code) => {
+                    console.log('[Stockfish] Process closed with code:', code);
+                    this.isReady = false;
+                });
+
+                // Initialize UCI
+                this.sendCommand('uci');
+
+                // Wait for engine to be ready
+                this.callbacks.set('init', {
+                    resolve,
+                    reject,
+                    timeout: setTimeout(() => {
+                        this.callbacks.delete('init');
+                        reject(new Error('Engine initialization timeout'));
+                    }, 10000)
+                });
+
+            } catch (error) {
+                console.error('[Stockfish] Initialization error:', error);
                 reject(error);
-            });
+            }
+        });
+    }
 
-            engine.on('exit', (code) => {
-                console.log('[Stockfish] Worker exited with code:', code);
-                if (!isReady) {
-                    clearTimeout(timeout);
-                    reject(new Error(`Worker exited with code ${code}`));
-                }
-            });
+    handleEngineOutput(line) {
+        console.log('[Stockfish] ←', line);
 
-            // Send initialization message
-            engine.postMessage({ type: 'init' });
-
-        } catch (error) {
-            console.error('[Stockfish] Init error:', error);
-            reject(error);
+        if (line === 'uciok') {
+            this.sendCommand('isready');
         }
-    });
-}
-
-function analyzePosition(fen, depth = 15) {
-    console.log('[Stockfish] Analyzing position:', fen, 'at depth:', depth);
-    
-    return new Promise((resolve, reject) => {
-        if (!engine || !isReady) {
-            reject(new Error('Engine not initialized or not ready'));
-            return;
+        else if (line === 'readyok') {
+            const init = this.callbacks.get('init');
+            if (init) {
+                clearTimeout(init.timeout);
+                this.callbacks.delete('init');
+                this.isReady = true;
+                init.resolve();
+            }
         }
-
-        let result = null;
-        let timeoutId = setTimeout(() => {
-            reject(new Error('Analysis timeout'));
-        }, 30000);
-
-        function messageHandler(msg) {
-            if (typeof msg === 'object' && msg.type === 'bestmove') {
-                clearTimeout(timeoutId);
-                engine.off('message', messageHandler);
-                resolve({
-                    bestMove: msg.move,
-                    evaluation: msg.evaluation,
-                    depth: msg.depth
+        else if (line.includes('bestmove')) {
+            const analysis = this.callbacks.get('analysis');
+            if (analysis) {
+                clearTimeout(analysis.timeout);
+                this.callbacks.delete('analysis');
+                
+                const bestMove = line.split('bestmove ')[1].split(' ')[0];
+                analysis.resolve({
+                    bestMove,
+                    score: analysis.score,
+                    fen: analysis.fen
                 });
             }
         }
+        else if (line.includes('score cp')) {
+            const analysis = this.callbacks.get('analysis');
+            if (analysis) {
+                const match = line.match(/score cp ([-\d]+)/);
+                if (match) {
+                    analysis.score = parseInt(match[1]) / 100;
+                }
+            }
+        }
+    }
 
-        engine.on('message', messageHandler);
-        engine.postMessage({
-            type: 'analyze',
-            fen: fen,
-            depth: depth
+    sendCommand(cmd) {
+        if (this.process && this.process.stdin.writable) {
+            console.log('[Stockfish] →', cmd);
+            this.process.stdin.write(cmd + '\n');
+        }
+    }
+
+    analyzePosition(fen, depth = 15) {
+        return new Promise((resolve, reject) => {
+            if (!this.isReady) {
+                reject(new Error('Engine not ready'));
+                return;
+            }
+
+            this.callbacks.set('analysis', {
+                resolve,
+                reject,
+                fen,
+                score: null,
+                timeout: setTimeout(() => {
+                    this.callbacks.delete('analysis');
+                    reject(new Error('Analysis timeout'));
+                }, 30000)
+            });
+
+            this.sendCommand('position fen ' + fen);
+            this.sendCommand('go depth ' + depth);
         });
-    });
-}
+    }
 
-function isEngineReady() {
-    return isReady && engine !== null;
-}
-
-function quitStockfish() {
-    if (engine) {
-        engine.postMessage({ type: 'quit' });
-        engine.terminate();
-        engine = null;
-        isReady = false;
+    quit() {
+        if (this.process) {
+            this.sendCommand('quit');
+            this.process.kill();
+            this.process = null;
+            this.isReady = false;
+        }
     }
 }
 
+const engine = new StockfishEngine();
+
 module.exports = {
-    initializeStockfish,
-    analyzePosition,
-    quitStockfish,
-    isEngineReady
+    initializeStockfish: () => engine.init(),
+    analyzePosition: (fen, depth) => engine.analyzePosition(fen, depth),
+    quitStockfish: () => engine.quit(),
+    isEngineReady: () => engine.isReady
 };

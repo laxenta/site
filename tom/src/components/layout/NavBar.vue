@@ -19,16 +19,6 @@
         </router-link>
       </li>
       <li>
-        <router-link to="/chess" class="nav-item">
-          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-            <path
-              d="M8.5 14.5A2.5 2.5 0 0011 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 11-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 002.5 2.5z"
-            />
-          </svg>
-          <span>Chess</span>
-        </router-link>
-      </li>
-      <li>
         <router-link to="/singing" class="nav-item">
           <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
             <path
@@ -38,7 +28,7 @@
               d="M8 12h8M8 16h4"
             />
           </svg>
-          <span>Singing</span>
+          <span>Music Tutorials</span>
         </router-link>
       </li>
       <li>
@@ -48,7 +38,7 @@
               d="M16 8v8m-4-5v5m-4-2v2m-2 4h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
             />
           </svg>
-          <span>Progress</span>
+          <span>Vocal Training</span>
         </router-link>
       </li>
       <li>

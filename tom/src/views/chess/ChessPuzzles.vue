@@ -609,7 +609,7 @@ function debounce(func, wait) {
   flex-direction: column;
   align-items: center;
   justify-content: start;
-  height: 169vh; 
+  height: 135vh; 
   width: 100%;
   background: linear-gradient(to bottom right, #1e293b, #0f172a);
   color: #0effcb;

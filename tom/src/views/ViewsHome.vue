@@ -12,13 +12,13 @@
 
       <div class="hero-content">
         <h1 class="title-gradient animate-slide-down">
-           Your own chess Mastery Platform :3
+           Chess Learning and Vocal Improvements!
         </h1>
         <p class="subtitle animate-slide-up">
           Learn chess and singing with interactive lessons
         </p>
         <div class="hero-buttons animate-fade-in">
-          <button @click="navigateTo('/chess')" 
+          <button @click="navigateTo('/puzzles')" 
                   class="btn btn-primary pulse-animation">
             <span class="btn-content">
               <img src="https://cdn-icons-png.flaticon.com/512/4363/4363864.png" 
@@ -96,7 +96,7 @@ export default {
           id: 1,
           title: "Chess Mastery :3",
           description: "Master chess from basics to advanced strategies through interactive lessons with an integrated AI",
-          route: "/chess",
+          route: "/puzzles",
           image: "https://images.unsplash.com/photo-1529699211952-734e80c4d42b?q=80&w=2071&auto=format&fit=crop",
           difficulty: "Beginner Friendly",
           duration: "12 Week Course",
@@ -200,7 +200,6 @@ export default {
   overflow: hidden; /* Hide overflowing particles or animations */
   scroll-snap-align: start; /* Beloved snap scrolling if */
 }
-
 
 .hero-background {
   position: absolute;
@@ -385,16 +384,23 @@ export default {
 }
 
 .skill-card {
-  background: var(--bg-secondary);
-  border-radius: 1.5rem;
+  background: rgba(30, 41, 59, 0.4);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 24px;
   overflow: hidden;
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   cursor: pointer;
+  color: white;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
 }
 
 .skill-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+trasnform: translateY(-8px) scale(1.05);
+box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+background: rgba(30, 41, 59,0.6);
+border-color:  rgba(255, 255 255, 0.2);
 }
 
 .card-image-container {
@@ -427,25 +433,42 @@ export default {
 }
 
 .card-content {
-  padding: 1.5rem;
+  padding: 2rem;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.05) 0%,
+    rgba(255, 255, 255, 0.02) 100%
+  );
 }
+
 
 .card-title {
-  font-size: 1.5rem;
+  font-size: 1.75rem;
   font-weight: 700;
   margin-bottom: 1rem;
+  background: linear-gradient(to right, #fff, #94a3b8);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
 }
 
+
+
 .description {
-  color: var(--text-secondary);
+  color: rgba(255, 255, 255, 0.8);
+  line-height: 1.6;
+  font-size: 1.1rem;
   margin-bottom: 1.5rem;
 }
 
-.feature-list {
-  list-style: none;
-  padding: 0;
+.feature-list li {
+  padding: 0.75rem 0;
+  color: rgba(255, 255, 255, 0.7);
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  transition: all 0.3s ease;
 }
-
 .feature-list li {
   padding: 0.5rem 0;
   color: var(--text-secondary);
@@ -454,29 +477,50 @@ export default {
   gap: 0.5rem;
 }
 
+.feature-list li:hover {
+  color: rgba(255, 255, 255, 0.9);
+  transform: translateX(8px);
+}
 .feature-list li::before {
   content: '→';
   color: var(--primary);
+  font-size: 1.2rem;
+  opacity: 0.8;
+  transition: transform 0.3s ease;
+}
+
+.feature-list li:hover::before {
+  transform: translateX(4px);
+  opacity: 1;
 }
 
 .card-footer {
-  padding: 1.5rem;
-  border-top: 1px solid rgba(0, 0, 0, 0.447);
+  padding: 1.5rem 2rem;
+  background: rgba(0, 0, 0, 0.2);
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
   display: flex;
   justify-content: space-between;
   align-items: center;
+  backdrop-filter: blur(5px);
 }
 
+
+.
 .stats {
   display: flex;
-  gap: 1rem;
-  color: var(--text-secondary);
-  font-size: 0.875rem;
+  gap: 1.5rem;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.95rem;
 }
 
 .rating {
   color: #fbbf24;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
+
+
 
 /* Responsive Design */
 @media (max-width: 768px) {
@@ -503,28 +547,33 @@ export default {
 
 .card-image-container {
   position: relative;
-  height: 220px;
+  height: 240px;
   overflow: hidden;
 }
+
 
 .card-image {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transition: transform 0.5s ease, filter 0.5s ease;
+  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .skill-card:hover .card-image {
   transform: scale(1.1);
-  filter: blur(5px);
+  filter: brightness(1.1) contrast(1.1);
 }
 
 .image-overlay {
   position: absolute;
   inset: 0;
-  background: linear-gradient(to top, rgb(229, 230, 230), transparent);
+  background: linear-gradient(
+    to top,
+    rgba(15, 23, 42, 0.9),
+    rgba(15, 23, 42, 0.2)
+  );
   opacity: 0;
-  transition: opacity 0.3s ease;
+  transition: all 0.4s ease;
 }
 
 .skill-card:hover .image-overlay {
@@ -548,15 +597,29 @@ export default {
 .hover-message {
   opacity: 0;
   transform: translateY(20px);
-  animation: bounce 1.5s infinite;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 }
-
 .skill-card:hover .hover-message {
   opacity: 1;
   transform: translateY(0);
-  transition: all 0.5s ease;
+}
+/*
+.skill-card.bg-color-1 {
+  background: linear-gradient(135deg, rgba(4, 255, 226, 0.1), rgba(0, 21, 255, 0.1));
 }
 
+.skill-card.bg-color-2 {
+  background: linear-gradient(135deg, rgba(9, 94, 222, 0.1), rgba(5, 255, 213, 0.1));
+}
+
+.skill-card.bg-color-3 {
+  background: linear-gradient(135deg, rgba(255, 205, 4, 0.1), rgba(7, 243, 219, 0.1));
+}
+
+.skill-card.bg-color-4 {
+  background: linear-gradient(135deg, rgba(3, 216, 236, 0.1), rgba(0, 0, 0, 0.1));
+}*/
 .hover-icon {
   width: 40px;
   height: 40px;
@@ -575,7 +638,7 @@ export default {
     transform: translateY(-5px);
   }
 }
-
+/*
 .bg-color-1 {
   background: linear-gradient(to right, #04ffe2, #0015ff);
 }
@@ -591,7 +654,7 @@ export default {
 .bg-color-4 {
   background: linear-gradient(to right, #03d8ec, #000000);
 }
-
+*/
 .skill-card {
   border-radius: 1.5rem;
   overflow: hidden;
@@ -613,4 +676,112 @@ html {
   scroll-snap-align: start; 
 }
 
+.hero-buttons {
+  margin-top: 2rem;
+}
+
+
+/*test fr fr fr fr ninga*/ 
+/* Update the features section container */
+.features {
+  padding: 4rem 0; /* Reduced padding */
+  width: 100%;
+  margin: 0;
+}
+
+/* Update the skills grid */
+.skills-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr); /* Force 2 columns */
+  gap: 2rem; /* Consistent gap */
+  padding: 0 2rem; /* Add some padding on the sides */
+  width: 100%;
+  max-width: 100%;
+}
+
+/* Update the skill card */
+.skill-card {
+  width: 100%;
+  height: 100%;
+  background: rgba(30, 41, 59, 0.4);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px; /* Slightly reduced border radius */
+  display: flex;
+  flex-direction: column;
+  aspect-ratio: 16/10; /* More rectangular aspect ratio */
+}
+
+/* Update the card image container */
+.card-image-container {
+  height: 200px; /* Fixed height */
+  width: 100%;
+}
+
+/* Update the card content */
+.card-content {
+  padding: 1.5rem;
+  flex: 1;
+}
+
+/* Update media queries for responsiveness */
+@media (max-width: 1200px) {
+  .skills-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.5rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .skills-grid {
+    grid-template-columns: 1fr; /* Single column on mobile */
+    padding: 0 1rem;
+  }
+
+  .skill-card {
+    aspect-ratio: 16/12; /* Slightly taller on mobile */
+  }
+
+  .card-image-container {
+    height: 180px;
+  }
+}
+
+/* Optional: Update section title for better alignment */
+.section-title {
+  text-align: center;
+  font-size: 3rem;
+  font-weight: 800;
+  margin: 0 0 3rem 0;
+  padding: 0 1rem;
+}
+
+/* Update card footer */
+.card-footer {
+  padding: 1rem 1.5rem;
+  margin-top: auto; /* Push to bottom */
+}
+
+/* Make sure images cover properly */
+.card-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Update feature list for better spacing */
+.feature-list {
+  margin: 1rem 0;
+}
+
+.feature-list li {
+  padding: 0.5rem 0;
+}
+
+/* Update hover effects */
+.skill-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 15px 30px rgba(0, 0, 0, 0.2);
+}
 </style>

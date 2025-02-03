@@ -39,6 +39,7 @@ const games = {};
 const puzzles = [];
 const userPuzzleStats = {};
 const puzzleCache = new Map();
+const moveQueues = {};
 
 // Helper Functions
 const moveToString = (move) => `${move.from}${move.to}${move.promotion || ''}`;
@@ -239,109 +240,174 @@ const createFreePlayGame = (playerId) => {
 };
 
 const handleMove = async (gameId, from, to, promotion = 'q') => {
-    try {
-        if (!from || !to || typeof from !== 'string' || typeof to !== 'string') {
-            throw new ChessServerError('Invalid move format', 'INVALID_INPUT');
-        }
-
-        const squareRegex = /^[a-h][1-8]$/;
-        if (!squareRegex.test(from) || !squareRegex.test(to)) {
-            throw new ChessServerError('Invalid square notation', 'INVALID_SQUARE_FORMAT');
-        }
-
-        const game = games[gameId];
-        if (!game) {
-            throw new ChessServerError('Game not found', 'GAME_NOT_FOUND');
-        }
-
-        const move = game.chess.move({ from, to, promotion });
-        if (!move) {
-            throw new ChessServerError(
-                `Invalid move: ${from}-${to}${promotion !== 'q' ? promotion : ''}`,
-                'INVALID_MOVE'
-            );
-        }
-
-        const analysis = await analyzeLichessPosition(game.chess.fen());
-        
-        game.moveHistory.push({
-            move,
-            timestamp: Date.now(),
-            analysis: analysis || null
-        });
-
-        if (game.completed || !game.puzzle) {
-            let computerMove = null;
-            if (analysis && analysis.bestMove) {
-                const [from, to] = [
-                    analysis.bestMove.substring(0, 2),
-                    analysis.bestMove.substring(2, 4)
-                ];
-                try {
-                    computerMove = game.chess.move({
-                        from,
-                        to,
-                        promotion: analysis.bestMove[4] || 'q'
-                    });
-                } catch (error) {
-                    console.warn('Failed to make best move, trying random move');
-                }
+    return new Promise((resolve, reject) => {
+        try {
+            // Input validation
+            if (!from || !to || typeof from !== 'string' || typeof to !== 'string') {
+                throw new ChessServerError('Invalid move format', 'INVALID_INPUT');
             }
 
-            if (!computerMove) {
+            const squareRegex = /^[a-h][1-8]$/;
+            if (!squareRegex.test(from) || !squareRegex.test(to)) {
+                throw new ChessServerError('Invalid square notation', 'INVALID_SQUARE_FORMAT');
+            }
+
+            const game = games[gameId];
+            if (!game) {
+                throw new ChessServerError('Game not found', 'GAME_NOT_FOUND');
+            }
+
+            // Initialize move queue for this game if it doesn't exist
+            if (!moveQueues[gameId]) {
+                moveQueues[gameId] = [];
+            }
+
+            // Add move to queue
+            moveQueues[gameId].push({ from, to, promotion, resolve, reject });
+
+            // Process queue if this is the first move
+            if (moveQueues[gameId].length === 1) {
+                processNextMove(gameId);
+            }
+
+        } catch (error) {
+            reject(error);
+        }
+    });
+};
+const processNextMove = async (gameId) => {
+    const game = games[gameId];
+    const queue = moveQueues[gameId];
+
+    if (!queue || queue.length === 0 || !game) return;
+
+    const { from, to, promotion, resolve, reject } = queue[0];
+
+    try {
+        // Check if the piece being moved is a pawn and if promotion is possible
+        const piece = game.chess.get(from);
+        const isLastRank = (piece?.type === 'p' && 
+            ((piece.color === 'w' && to[1] === '8') || 
+             (piece.color === 'b' && to[1] === '1')));
+
+        // Create move object without promotion unless it's valid
+        const moveObj = {
+            from,
+            to,
+            promotion: isLastRank ? (promotion || 'q') : undefined
+        };
+
+        // Attempt the move
+        const move = game.chess.move(moveObj);
+        
+        if (!move) {
+            // Instead of throwing error, return invalid move response
+            resolve({
+                isCorrect: false,
+                error: 'Invalid move',
+                board: game.chess.board(),
+                turn: game.chess.turn(),
+                fen: game.chess.fen(),
+                isGameOver: game.chess.isGameOver(),
+                isPuzzleCompleted: game.completed,
+                unicodePieces: getUnicodePieces(game.chess.board()),
+                moveHistory: game.moveHistory.map(hist => ({
+                    move: hist.move,
+                    san: hist.move?.san,
+                    isComputerMove: hist.isComputerMove || false,
+                    moveNumber: Math.floor((game.moveHistory.indexOf(hist) + 2) / 2)
+                })),
+                timestamp: new Date().toISOString()
+            });
+            return;
+        }
+
+        // Handle analysis asynchronously
+        let analysis = null;
+        analyzeLichessPosition(game.chess.fen())
+            .then(result => {
+                analysis = result;
+                if (analysis?.success) {
+                    game.moveHistory[game.moveHistory.length - 1].analysis = analysis;
+                }
+            })
+            .catch(error => {
+                console.warn('Analysis failed:', error);
+            });
+
+        // Record move immediately
+        const moveRecord = {
+            move,
+            timestamp: Date.now(),
+            analysis: null
+        };
+        game.moveHistory.push(moveRecord);
+
+        // Handle computer response if needed
+        let computerMove = null;
+        if (game.completed || !game.puzzle) {
+            try {
                 computerMove = makeRandomMove(game.chess);
                 if (computerMove) {
                     game.chess.move(computerMove);
+                    game.moveHistory.push({
+                        move: computerMove,
+                        timestamp: Date.now(),
+                        isComputerMove: true
+                    });
                 }
-            }
-
-            if (computerMove) {
-                const computerAnalysis = await analyzeLichessPosition(game.chess.fen());
-                game.moveHistory.push({
-                    move: computerMove,
-                    timestamp: Date.now(),
-                    analysis: computerAnalysis || null,
-                    isComputerMove: true
-                });
+            } catch (error) {
+                console.warn('Computer move failed:', error);
+                // Continue without computer move
             }
         }
 
-        return {
+        // Prepare response
+        const response = {
             isCorrect: true,
             board: game.chess.board(),
             move,
-            computerMove: game.moveHistory[game.moveHistory.length - 1]?.isComputerMove 
-                ? game.moveHistory[game.moveHistory.length - 1].move 
-                : null,
+            computerMove,
             turn: game.chess.turn(),
             fen: game.chess.fen(),
-            isGameOver: game.chess.isGameOver(), // Fixed this line
+            isGameOver: game.chess.isGameOver(),
             isPuzzleCompleted: game.completed,
             unicodePieces: getUnicodePieces(game.chess.board()),
-            analysis: analysis?.success ? {
-                evaluation: analysis.score,
-                bestMove: analysis.bestMove,
-                depth: analysis.depth,
-                line: analysis.line
-            } : null,
             moveHistory: game.moveHistory.map(hist => ({
                 move: hist.move,
-                evaluation: hist.analysis?.score ? Number(hist.analysis.score.toFixed(1)) : null,  // Round to 1 decimal
-                san: hist.move.san, // Add algebraic notation
+                evaluation: hist.analysis?.score ? Number(hist.analysis.score.toFixed(1)) : null,
+                san: hist.move.san,
                 bestMove: hist.analysis?.bestMove || null,
                 isComputerMove: hist.isComputerMove || false,
-                moveNumber: Math.floor((game.moveHistory.indexOf(hist) + 2) / 2) // Add move numbers
+                moveNumber: Math.floor((game.moveHistory.indexOf(hist) + 2) / 2)
             })),
             timestamp: new Date().toISOString()
         };
 
+        resolve(response);
+
     } catch (error) {
-        console.error('Error handling move:', error);
-        throw new ChessServerError(
-            error.message,
-            error.code || 'MOVE_ERROR',
-            { from, to, promotion }
-        );
+        // Log error but don't reject - instead return error response
+        console.warn('Move processing error:', error);
+        resolve({
+            isCorrect: false,
+            error: 'Move processing error',
+            board: game.chess.board(),
+            turn: game.chess.turn(),
+            fen: game.chess.fen(),
+            isGameOver: game.chess.isGameOver(),
+            isPuzzleCompleted: game.completed,
+            unicodePieces: getUnicodePieces(game.chess.board()),
+            timestamp: new Date().toISOString()
+        });
+    } finally {
+        // Remove processed move from queue
+        queue.shift();
+        
+        // Process next move if any
+        if (queue.length > 0) {
+            setTimeout(() => processNextMove(gameId), 50);
+        }
     }
 };
 
@@ -421,6 +487,7 @@ const cleanupGames = () => {
     Object.keys(games).forEach(gameId => {
         if (now - games[gameId].startTime > CONFIG.PUZZLE_EXPIRY_TIME) {
             delete games[gameId];
+            delete moveQueues[gameId]; 
         }
     });
 };
@@ -436,7 +503,6 @@ const initializeServer = async () => {
         throw error;
     }
 };
-
 // Export all necessary functions
 module.exports = {
     initializeServer,

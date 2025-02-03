@@ -4,8 +4,18 @@ const fs = require('fs');
 
 console.log('[Worker] Starting initialization...');
 
+// Create a proper self object for Node.js environment
+global.self = {
+    postMessage: function(msg) {
+        parentPort.postMessage(msg);
+    },
+    location: {
+        href: path.join(__dirname, '../public/stockfish/stockfish.worker.js')
+    }
+};
+
+// Set up WebAssembly environment
 try {
-    // Update paths to use the stockfish subdirectory
     const wasmPath = path.join(__dirname, '../public/stockfish/stockfish.wasm');
     console.log('[Worker] WASM path:', wasmPath);
     
@@ -13,60 +23,76 @@ try {
         throw new Error(`WASM file not found at ${wasmPath}`);
     }
     
-    // Read and set up WASM binary
     console.log('[Worker] Reading WASM file...');
     const wasmBinary = fs.readFileSync(wasmPath);
     const wasmBase64 = wasmBinary.toString('base64');
     
     console.log('[Worker] WASM file size:', wasmBinary.length, 'bytes');
-    
-    // Create a Buffer URL-like object for the WASM
     global.wasmBinary = Buffer.from(wasmBase64, 'base64');
-    
-    console.log('[Worker] Setting up environment...');
-    
-    // Emulate the Web Worker environment
-    global.self = {
-        onmessage: null,
-        postMessage: function(msg) {
-            parentPort.postMessage(msg);
-        },
-        // Add location for worker script resolution
-        location: {
-            href: path.join(__dirname, '../public/stockfish/stockfish.worker.js')
-        }
-    };
-    
+
     let engine = null;
     let isInitializing = false;
-    
+    let currentEvaluation = null;
+    let currentDepth = 0;
+    let isAnalyzing = false;
+
+    function debug(...args) {
+        console.log('[Worker]', ...args);
+    }
+
+    function handleEngineMessage(line) {
+        debug('Engine message:', line);
+        parentPort.postMessage(line);
+
+        if (line.includes('bestmove')) {
+            const bestMove = line.split('bestmove ')[1].split(' ')[0];
+            isAnalyzing = false;
+            parentPort.postMessage({
+                type: 'bestmove',
+                move: bestMove,
+                evaluation: currentEvaluation,
+                depth: currentDepth
+            });
+        } 
+        else if (line.includes('score cp')) {
+            const matches = line.match(/score cp ([-\d]+)/);
+            if (matches) {
+                currentEvaluation = parseInt(matches[1]) / 100;
+            }
+            
+            const depthMatch = line.match(/depth (\d+)/);
+            if (depthMatch) {
+                currentDepth = parseInt(depthMatch[1]);
+            }
+
+            parentPort.postMessage({
+                type: 'evaluation',
+                evaluation: currentEvaluation,
+                depth: currentDepth
+            });
+        }
+    }
+
     async function initializeEngine() {
         if (isInitializing || engine) return;
         
         isInitializing = true;
-        console.log('[Worker] Starting engine initialization');
+        debug('Starting engine initialization');
         
         try {
-            console.log('[Worker] Loading Stockfish module...');
-            // Update the path to stockfish.js
+            debug('Loading Stockfish module...');
             const Stockfish = require('../public/stockfish/stockfish.js');
             
-            console.log('[Worker] Creating Stockfish instance...');
+            debug('Creating Stockfish instance...');
             engine = await Stockfish({
                 wasmBinary: global.wasmBinary,
-                locateFile: (file) => {
-                    // Help Stockfish locate its files
-                    return path.join(__dirname, '../public/stockfish/', file);
-                }
+                locateFile: (file) => path.join(__dirname, '../public/stockfish/', file)
             });
             
-            console.log('[Worker] Adding message listener...');
-            engine.addMessageListener((line) => {
-                console.log('[Worker] Engine message:', line);
-                parentPort.postMessage(line);
-            });
+            debug('Adding message listener...');
+            engine.addMessageListener(handleEngineMessage);
             
-            console.log('[Worker] Initializing UCI...');
+            debug('Initializing UCI...');
             engine.postMessage('uci');
             engine.postMessage('setoption name MultiPV value 1');
             engine.postMessage('setoption name Threads value 1');
@@ -74,7 +100,7 @@ try {
             engine.postMessage('ucinewgame');
             engine.postMessage('isready');
             
-            console.log('[Worker] Engine initialization complete');
+            debug('Engine initialization complete');
             parentPort.postMessage('ready');
         } catch (err) {
             console.error('[Worker] Engine initialization failed:', err);
@@ -83,24 +109,67 @@ try {
             isInitializing = false;
         }
     }
-    
-    // Handle messages from parent
-    parentPort.on('message', (msg) => {
+
+    function analyzePosition(fen, depth = 15) {
         if (!engine) {
-            console.log('[Worker] Engine not ready, received message:', msg);
+            parentPort.postMessage({ 
+                type: 'error', 
+                message: 'Engine not initialized' 
+            });
             return;
         }
-        console.log('[Worker] Sending to engine:', msg);
-        engine.postMessage(msg);
+
+        isAnalyzing = true;
+        currentEvaluation = null;
+        currentDepth = 0;
+
+        engine.postMessage('position fen ' + fen);
+        engine.postMessage('go depth ' + depth);
+    }
+
+    // Handle messages from the main thread
+    parentPort.on('message', (msg) => {
+        debug('Received message:', msg);
+        
+        if (typeof msg === 'object') {
+            switch (msg.type) {
+                case 'init':
+                    if (!engine && !isInitializing) {
+                        initializeEngine();
+                    }
+                    break;
+
+                case 'analyze':
+                    if (msg.fen) {
+                        analyzePosition(msg.fen, msg.depth);
+                    }
+                    break;
+
+                case 'stop':
+                    if (engine && isAnalyzing) {
+                        engine.postMessage('stop');
+                        isAnalyzing = false;
+                    }
+                    break;
+
+                case 'quit':
+                    if (engine) {
+                        engine.postMessage('quit');
+                        engine = null;
+                    }
+                    break;
+            }
+        } else if (typeof msg === 'string' && engine) {
+            engine.postMessage(msg);
+        }
     });
-    
-    // Initialize the engine
-    console.log('[Worker] Starting engine initialization...');
+
+    // Start initialization
     initializeEngine().catch(err => {
         console.error('[Worker] Initialization error:', err);
         parentPort.postMessage('error: ' + err.message);
     });
-    
+
 } catch (error) {
     console.error('[Worker] Setup error:', error);
     parentPort.postMessage('error: ' + error.message);

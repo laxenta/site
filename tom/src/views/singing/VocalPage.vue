@@ -12,9 +12,9 @@
       </nav>
   
       <div class="lesson-header">
-        <div class="lesson-number">Lesson 3</div>
+        <div class="lesson-number">Lesson</div>
         <h1>Pitch Control Training</h1>
-        <p class="subtitle">Master your pitch accuracy through interactive exercises</p>
+        <p class="subtitle">Master your pitch accuracy through moaning exercises</p>
         <div class="difficulty">
           <span class="difficulty-label">Difficulty:</span>
           <div class="difficulty-stars">
@@ -400,7 +400,7 @@
   
   .mic-inner {
     width: 50px;
-    height: 50px;
+    height: 30px;
     background: #23a6d5;
     border-radius: 50%;
     transition: all 0.3s ease;

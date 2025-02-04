@@ -17,7 +17,7 @@ const routes = [
     component: () => import('../views/singing/SingingHome.vue')
   },
   {
-    path: '/singing/vocal',
+    path: '/vocal',
     name: 'VocalTraining',
     component: () => import('../views/singing/VocalPage.vue')
   },

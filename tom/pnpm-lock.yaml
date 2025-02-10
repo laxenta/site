@@ -56,6 +56,9 @@ importers:
       path-browserify:
         specifier: 1.0.1
         version: 1.0.1
+      pitchfinder:
+        specifier: ^2.3.2
+        version: 2.3.2
       socket.io:
         specifier: ^4.8.1
         version: 4.8.1
@@ -3285,6 +3288,9 @@ packages:
   picomatch@4.0.2:
     resolution: {integrity: sha512-M7BAV6Rlcy5u+m6oPhAPFgJTzAioX/6B0DxyvDlo9l8+T3nLKbrczg2WLUyzd45L8RqfUMyGPzekbMvX2Ldkwg==}
     engines: {node: '>=12'}
+
+  pitchfinder@2.3.2:
+    resolution: {integrity: sha512-Mn3jcp/y1xmAUKI1lMIU8bIqE9AcSuKMFuvJI9C/36oNwVklUF167o0TH/H5fwxuSIaz+XfBD6vd2G5lnddpzw==}
 
   pkg-dir@4.2.0:
     resolution: {integrity: sha512-HRDzbaKjC+AOWVXxAU/x54COGeIv9eb+6CkDSQoNTt4XyWoIJvuPsXizxu/Fr23EiekbtZwmh1IcIG/l/a10GQ==}
@@ -8062,6 +8068,8 @@ snapshots:
 
   picomatch@4.0.2:
     optional: true
+
+  pitchfinder@2.3.2: {}
 
   pkg-dir@4.2.0:
     dependencies:

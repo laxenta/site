@@ -35,6 +35,11 @@ const routes = [
     path: '/puzzles',
     name: 'ChessPuzzles',
     component: () => import('../views/chess/ChessPuzzles.vue')
+  },
+  {
+    path: '/multiplayer',
+    name: 'Multiplayer',
+    component: () => import('../views/chess/MultiplayerChess.vue')
   }
 ]
 

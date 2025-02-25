@@ -8,7 +8,7 @@ const { v4: uuidv4 } = require('uuid');
 const CONFIG = {
   PUZZLE_EXPIRY_TIME: 30 * 60 * 1000, // 30 minutes
   CLEANUP_INTERVAL: 60 * 60 * 1000, // 1 hour
-  PORT: 8081 // Ensure the server runs on port 8081
+  PORT: 8081, // Ensure the server runs on port 8081
 };
 
 // In-memory storage for games (multiplayer sessions)
@@ -88,11 +88,6 @@ const handleMove = (gameId, playerId, from, to, promotion = 'q') => {
   const turn = chess.turn(); // "w" or "b"
   let playerColor = 'white';
   if (game.players.black === playerId) playerColor = 'black';
-  // If the player is not yet assigned and game is free-play, assign as white.
-  if (!game.players.white && !game.players.black) {
-    game.players.white = playerId;
-    playerColor = 'white';
-  }
   // Validate turn: if it's not this player's turn, throw error.
   if ((turn === 'w' && playerColor !== 'white') ||
       (turn === 'b' && playerColor !== 'black')) {
@@ -141,6 +136,15 @@ const gameStateEndpoint = (req, res) => {
   });
 };
 
+// Endpoint: root route for debugging
+const rootEndpoint = (req, res) => {
+  res.send(`
+    <h1>Chess Multiplayer Server</h1>
+    <p>Server is running on port ${CONFIG.PORT}</p>
+    <pre>${JSON.stringify(games, null, 2)}</pre>
+  `);
+};
+
 // Cleanup expired games
 const cleanupGames = () => {
   const now = Date.now();
@@ -157,10 +161,21 @@ setInterval(cleanupGames, CONFIG.CLEANUP_INTERVAL);
 
 // Express server setup
 const app = express();
-app.use(cors());
+
+// Configure CORS to allow any origin
+app.use(
+    cors({
+        origin: '*',
+        methods: ['GET', 'POST', 'OPTIONS'],
+        allowedHeaders: ['Content-Type'],
+        credentials: false,
+    })
+);
+
 app.use(express.json());
 
 // Routes
+app.get('/', rootEndpoint); // Root route for debugging
 app.get('/api/join', joinGameEndpoint);
 app.post('/api/move', moveEndpoint);
 app.get('/api/game', gameStateEndpoint);

@@ -7,11 +7,11 @@ const { v4: uuidv4 } = require('uuid');
 const CONFIG = {
     MAX_CACHE_SIZE: 1000,
     PUZZLE_EXPIRY_TIME: 30 * 60 * 1000, // 30 minutes
-    LICHESS_API_TOKEN: process.env.LICHESS_API_TOKEN || 'lip_2iBBN7H4Hs38jGw5bLlZ', // Should be in env vars
+    LICHESS_API_TOKEN: process.env.LICHESS_API_TOKEN || 'lip_2iBBN7H4Hs38jGw5bLlZ', // i shall not forget to rm this shit from here.
     CLEANUP_INTERVAL: 60 * 60 * 1000 // 1 hour
 };
+const multiplayerGames = {};
 
-// Custom error class for better error handling
 class ChessServerError extends Error {
     constructor(message, code, details = null) {
         super(message);
@@ -284,13 +284,11 @@ const processNextMove = async (gameId) => {
     const { from, to, promotion, resolve, reject } = queue[0];
 
     try {
-        // Check if the piece being moved is a pawn and if promotion is possible
         const piece = game.chess.get(from);
         const isLastRank = (piece?.type === 'p' && 
             ((piece.color === 'w' && to[1] === '8') || 
              (piece.color === 'b' && to[1] === '1')));
 
-        // Create move object without promotion unless it's valid
         const moveObj = {
             from,
             to,
@@ -301,7 +299,6 @@ const processNextMove = async (gameId) => {
         const move = game.chess.move(moveObj);
         
         if (!move) {
-            // Instead of throwing error, return invalid move response
             resolve({
                 isCorrect: false,
                 error: 'Invalid move',
@@ -343,7 +340,6 @@ const processNextMove = async (gameId) => {
         };
         game.moveHistory.push(moveRecord);
 
-        // Handle computer response if needed
         let computerMove = null;
         if (game.completed || !game.puzzle) {
             try {
@@ -358,7 +354,6 @@ const processNextMove = async (gameId) => {
                 }
             } catch (error) {
                 console.warn('Computer move failed:', error);
-                // Continue without computer move
             }
         }
 
@@ -503,6 +498,9 @@ const initializeServer = async () => {
         throw error;
     }
 };
+
+
+
 // Export all necessary functions
 module.exports = {
     initializeServer,

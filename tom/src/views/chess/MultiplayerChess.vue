@@ -103,7 +103,7 @@
     );
   };
   
-  // API base
+  // API base urllllllllllllllllllllllllllllllllllllll... k wtf it keeps changing ( rememebr this )
   const API_BASE_URL = "https://cuddly-rotary-phone-q744jwxwpw9qfxvjx-8081.app.github.dev/api";
   
   // Symbol mapping for fallback

@@ -6,7 +6,7 @@ const stockfish = require('./chess-stockfish');
 const app = express();
 const port = process.env.PORT || 5050;
 
-// Wrap async route handlers to catch errors
+//error handler async
 const asyncHandler = (fn) => (req, res, next) => {
     Promise.resolve(fn(req, res, next)).catch(next);
 };
@@ -26,7 +26,7 @@ app.use((req, res, next) => {
     next();
 });
 
-// Initialize servers with better error handling
+//handling
 const initializeServers = async () => {
     try {
         await Promise.all([
@@ -36,13 +36,13 @@ const initializeServers = async () => {
         console.log('[DEBUG] All services initialized successfully');
     } catch (err) {
         console.error('[DEBUG] Service initialization error:', err);
-        // Don't crash, just log the error
+        // don't crash, just log the error
     }
 };
 
 initializeServers();
 
-// Modified API Routes with async handling
+//new mdfied API Routes with async handling
 app.post('/api/puzzle/new', asyncHandler(async (req, res) => {
     const { playerId, targetRating } = req.body;
     if (!playerId) {
@@ -70,7 +70,7 @@ app.post('/api/puzzle/:gameId/move', asyncHandler(async (req, res) => {
         if (error.code === 'GAME_NOT_FOUND') {
             res.status(404).json({ error: error.message, code: error.code });
         } else {
-            throw error; // Let the global error handler catch it
+            throw error; //global error handler catch it
         }
     }
 }));
@@ -87,7 +87,7 @@ app.get('/api/stats/:playerId', asyncHandler(async (req, res) => {
     res.json(stats);
 }));
 
-// Debug middleware (keep your existing one)
+// Debug middleware (we keep the existing one alright)
 app.use((req, res, next) => {
     console.log('[DEBUG] Request Headers:', req.headers);
     console.log('[DEBUG] Request Body:', req.body);
@@ -132,8 +132,7 @@ app.post('/api/analysis', asyncHandler(async (req, res) => {
         timestamp: new Date().toISOString()
     });
 }));
-
-// Keep your existing routes
+//just writting comments for reference
 app.get('/health', (req, res) => {
     res.json({ status: 'healthy', timestamp: new Date().toISOString() });
 });
@@ -151,11 +150,11 @@ app.get('/', (req, res) => {
     });
 });
 
-// Error handling middleware (must be after all routes)
+//err handling middleware (must be after all routes)
 app.use((err, req, res, next) => {
     console.error('[DEBUG] Server Error:', err);
     
-    // Handle chess server errors
+    //handle chess server errors
     if (err.name === 'ChessServerError') {
         return res.status(400).json({
             error: err.message,
@@ -197,10 +196,10 @@ process.on('uncaughtException', (error) => {
 // Handle unhandled promise rejections
 process.on('unhandledRejection', (reason, promise) => {
     console.error('[UNHANDLED REJECTION]', reason);
-    // Don't exit the process
+    //don't exit the process
 });
 
-// Keep your existing graceful shutdown
+//OUR existing graceful shutdown
 process.on('SIGTERM', () => {
     console.log('[DEBUG] SIGTERM signal received: closing HTTP server');
     server.close(() => {

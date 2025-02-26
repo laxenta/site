@@ -219,7 +219,7 @@ const createNewPuzzleGame = (playerId, targetRating = 1500) => {
         throw new ChessServerError(error.message, 'GAME_CREATION_ERROR');
     }
 };
-
+// this creates an empty instance of thegame i am pretty sure ;-) very helpful for me
 const createFreePlayGame = (playerId) => {
     const gameId = uuidv4();
     games[gameId] = {
@@ -227,7 +227,9 @@ const createFreePlayGame = (playerId) => {
         playerId,
         startTime: Date.now(),
         moveHistory: [],
-        completed: false
+        completed: false,
+        // We'll use opponentId to track if someone has joined this game
+        opponentId: null
     };
 
     return {
@@ -238,6 +240,28 @@ const createFreePlayGame = (playerId) => {
         unicodePieces: getUnicodePieces(games[gameId].chess.board())
     };
 };
+const joinGame = (playerId) => {
+    let existingGame = null;
+    // Look for a free-play game that is waiting for an opponent, for uh pairing up :>.
+    for (const gameId in games) {
+        const game = games[gameId];
+        // If the game already has a player but no opponent and the joining player is not the same:
+        if (game.playerId && !game.opponentId && game.playerId !== playerId) {
+            existingGame = game;
+            game.opponentId = playerId;
+            break;
+        }
+    }
+    if (!existingGame) {
+        const freePlayGame = createFreePlayGame(playerId);
+        // In the underlying game store, mark opponentId as still null.
+        games[freePlayGame.gameId].opponentId = null;
+        existingGame = games[freePlayGame.gameId];
+    }
+    return existingGame;
+};
+
+// change it in future, causing tons of fucing cors authentication issues
 
 const handleMove = async (gameId, from, to, promotion = 'q') => {
     return new Promise((resolve, reject) => {
@@ -246,35 +270,30 @@ const handleMove = async (gameId, from, to, promotion = 'q') => {
             if (!from || !to || typeof from !== 'string' || typeof to !== 'string') {
                 throw new ChessServerError('Invalid move format', 'INVALID_INPUT');
             }
-
             const squareRegex = /^[a-h][1-8]$/;
             if (!squareRegex.test(from) || !squareRegex.test(to)) {
                 throw new ChessServerError('Invalid square notation', 'INVALID_SQUARE_FORMAT');
             }
-
             const game = games[gameId];
             if (!game) {
                 throw new ChessServerError('Game not found', 'GAME_NOT_FOUND');
             }
-
-            // Initialize move queue for this game if it doesn't exist
+            // initialize move queue for this game if it doesn't exist
             if (!moveQueues[gameId]) {
                 moveQueues[gameId] = [];
             }
-
-            // Add move to queue
+            // add move to queue
             moveQueues[gameId].push({ from, to, promotion, resolve, reject });
-
-            // Process queue if this is the first move
+            // process queue if this is the first move
             if (moveQueues[gameId].length === 1) {
                 processNextMove(gameId);
             }
-
         } catch (error) {
             reject(error);
         }
     });
 };
+
 const processNextMove = async (gameId) => {
     const game = games[gameId];
     const queue = moveQueues[gameId];
@@ -285,19 +304,17 @@ const processNextMove = async (gameId) => {
 
     try {
         const piece = game.chess.get(from);
-        const isLastRank = (piece?.type === 'p' && 
-            ((piece.color === 'w' && to[1] === '8') || 
+        const isLastRank = (piece?.type === 'p' &&
+            ((piece.color === 'w' && to[1] === '8') ||
              (piece.color === 'b' && to[1] === '1')));
-
         const moveObj = {
             from,
             to,
             promotion: isLastRank ? (promotion || 'q') : undefined
         };
-
-        // Attempt the move
+        // Attempt the move, ;4
         const move = game.chess.move(moveObj);
-        
+
         if (!move) {
             resolve({
                 isCorrect: false,
@@ -319,7 +336,7 @@ const processNextMove = async (gameId) => {
             return;
         }
 
-        // Handle analysis asynchronously
+        // Handle analysis asynchronously (fire and forget)
         let analysis = null;
         analyzeLichessPosition(game.chess.fen())
             .then(result => {
@@ -357,8 +374,9 @@ const processNextMove = async (gameId) => {
             }
         }
 
-        // Prepare response
-        const response = {
+        // Prepare response after preocessing of uh move
+        // e
+           const response = {
             isCorrect: true,
             board: game.chess.board(),
             move,
@@ -380,9 +398,7 @@ const processNextMove = async (gameId) => {
         };
 
         resolve(response);
-
     } catch (error) {
-        // Log error but don't reject - instead return error response
         console.warn('Move processing error:', error);
         resolve({
             isCorrect: false,
@@ -398,7 +414,6 @@ const processNextMove = async (gameId) => {
     } finally {
         // Remove processed move from queue
         queue.shift();
-        
         // Process next move if any
         if (queue.length > 0) {
             setTimeout(() => processNextMove(gameId), 50);
@@ -406,7 +421,6 @@ const processNextMove = async (gameId) => {
     }
 };
 
-// User Statistics Management
 const updateUserStats = (playerId, game) => {
     if (!userPuzzleStats[playerId]) {
         userPuzzleStats[playerId] = {
@@ -418,7 +432,6 @@ const updateUserStats = (playerId, game) => {
             lastPlayed: null
         };
     }
-
     const stats = userPuzzleStats[playerId];
     stats.totalPuzzles++;
     stats.completedPuzzles++;
@@ -455,13 +468,11 @@ const getUserStats = (playerId) => {
     };
 };
 
-// Game State Management
 const getGameState = (gameId) => {
     const game = games[gameId];
     if (!game) {
         throw new ChessServerError('Game not found', 'GAME_NOT_FOUND');
     }
-
     return {
         board: game.chess.board(),
         turn: game.chess.turn(),
@@ -476,18 +487,16 @@ const getGameState = (gameId) => {
     };
 };
 
-// Cleanup Functions
 const cleanupGames = () => {
     const now = Date.now();
     Object.keys(games).forEach(gameId => {
         if (now - games[gameId].startTime > CONFIG.PUZZLE_EXPIRY_TIME) {
             delete games[gameId];
-            delete moveQueues[gameId]; 
+            delete moveQueues[gameId];
         }
     });
 };
 
-// Initialize the server
 const initializeServer = async () => {
     try {
         await loadPuzzles();
@@ -499,13 +508,11 @@ const initializeServer = async () => {
     }
 };
 
-
-
-// Export all necessary functions
 module.exports = {
     initializeServer,
-    createNewPuzzleGame,
+    createNewPuzzleGame, 
     createFreePlayGame,
+    joinGame,          // NEW: we export joinGame for free-play mode in server.js
     handleMove,
     getGameState,
     getUserStats,

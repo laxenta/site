@@ -1,70 +1,55 @@
-// chess-server.js
+'use strict';
+
 const express = require('express');
 const cors = require('cors');
-const { Chess } = require('chess.js');
-const { v4: uuidv4 } = require('uuid');
+const { joinGame, handleMove, getGameState } = require('./chess-server');
+// so now these are imported
+const app = express();
+const PORT = process.env.PORT || 8081;
 
-// Configuration
-const CONFIG = {
-  PUZZLE_EXPIRY_TIME: 30 * 60 * 1000, // 30 minutes
-  CLEANUP_INTERVAL: 60 * 60 * 1000, // 1 hour
-  PORT: 8081, // Ensure the server runs on port 8081
-};
-
-// In-memory storage for games (multiplayer sessions)
-const games = {};
-
-// Helper: rotate board matrix for black's view
-const rotateBoard = (board) => {
-  return board.slice().reverse().map(row => row.slice().reverse());
-};
-
-// Helper: create a new free-play game
-const createFreePlayGame = (playerId) => {
-  const gameId = uuidv4();
-  const chess = new Chess();
-  // First player becomes white
-  games[gameId] = {
-    chess,
-    players: { white: playerId, black: null },
-    moveHistory: [],
-    startTime: Date.now()
-  };
-  console.log(`Created new free-play game ${gameId} for player ${playerId} as white`);
-  return { gameId, chess };
-};
-
-// Helper: join an existing game or create a new one
-const joinGame = (playerId) => {
-  // Check if player is already in a game
-  for (const gameId in games) {
-    const game = games[gameId];
-    if (game.players.white === playerId || game.players.black === playerId) {
-      console.log(`Player ${playerId} re-joined game ${gameId}`);
-      return { gameId, chess: game.chess, players: game.players };
-    }
-    // If game has only white assigned, let this player join as black.
-    if (game.players.white && !game.players.black) {
-      game.players.black = playerId;
-      console.log(`Player ${playerId} joined game ${gameId} as black`);
-      return { gameId, chess: game.chess, players: game.players };
-    }
+// too many 302 errors idk why, will fix later ( dont forget)
+app.use((req, res, next) => {
+  res.header("Access-Control-Allow-Origin", "*");
+  res.header("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  res.header("Access-Control-Allow-Headers", "Content-Type");
+  if (req.method === "OPTIONS") {
+    return res.sendStatus(200);
   }
-  // No available game: create a new one.
-  return createFreePlayGame(playerId);
-};
+  next();
+});
 
-// Endpoint: join a game
-const joinGameEndpoint = (req, res) => {
-  // Use query parameter "playerId" or fallback to req.ip
-  const playerId = req.query.playerId || req.ip;
+// apply CORS middleware early.
+app.use(cors({
+  origin: '*',
+  methods: ['GET', 'POST', 'OPTIONS'],
+  allowedHeaders: ['Content-Type'],
+  credentials: false,
+}));
+app.options('*', cors());
+
+// parse JSON bodies.
+app.use(express.json());
+
+// now we log incoming rq
+app.use((req, res, next) => {
+  console.log(`[DEBUG] ${new Date().toISOString()} - ${req.method} ${req.url}`);
+  next();
+});
+
+/**
+ * GET /api/join
+ *
+ * yhe player Joins (or creates) a free-play chess game.
+ * expects a unique playerId as a query parameter.
+ */
+app.get('/api/join', (req, res) => {
+  const playerId = req.query.playerId;
+  if (!playerId) {
+    return res.status(400).json({ success: false, error: 'playerId is required.' });
+  }
   try {
     const { gameId, chess, players } = joinGame(playerId);
-    // Determine assigned color for the caller
-    let assignedColor = 'white';
-    if (players.black === playerId) {
-      assignedColor = 'black';
-    }
+    const assignedColor = (players.white === playerId) ? 'white' : 'black';
     res.json({
       success: true,
       gameId,
@@ -74,113 +59,80 @@ const joinGameEndpoint = (req, res) => {
       assignedColor
     });
   } catch (error) {
-    console.error('Join game error:', error);
-    res.status(500).json({ success: false, error: error.message });
+    console.error('[ERROR] Join game error:', error);
+    // fallback: Try to create a new game instance.
+    try {
+      const { gameId, chess, players } = joinGame(playerId);
+      const assignedColor = (players.white === playerId) ? 'white' : 'black';
+      res.json({
+        success: true,
+        gameId,
+        fen: chess.fen(),
+        turn: chess.turn(),
+        board: chess.board(),
+        assignedColor,
+        fallback: true
+      });
+    } catch (fallbackError) {
+      res.status(500).json({ success: false, error: fallbackError.message });
+    }
   }
-};
+});
 
-// Helper: handle a move
-const handleMove = (gameId, playerId, from, to, promotion = 'q') => {
-  const game = games[gameId];
-  if (!game) throw new Error('Game not found');
-
-  const chess = game.chess;
-  const turn = chess.turn(); // "w" or "b"
-  let playerColor = 'white';
-  if (game.players.black === playerId) playerColor = 'black';
-  // Validate turn: if it's not this player's turn, throw error.
-  if ((turn === 'w' && playerColor !== 'white') ||
-      (turn === 'b' && playerColor !== 'black')) {
-    throw new Error("Not your turn");
-  }
-
-  const move = chess.move({ from, to, promotion });
-  if (!move) throw new Error("Illegal move");
-
-  // Record move with timestamp
-  game.moveHistory.push({ move, timestamp: Date.now() });
-  console.log(`Game ${gameId}: Player ${playerId} (${playerColor}) moved from ${from} to ${to}`);
-
-  return { move, fen: chess.fen(), board: chess.board(), turn: chess.turn(), gameOver: chess.game_over() };
-};
-
-// Endpoint: make a move
-const moveEndpoint = (req, res) => {
-  // Expect JSON body: { gameId, playerId, from, to, promotion(optional) }
+/**
+ * POST /api/move
+ *
+ * processes a move from the frontend.
+ * expects gameId, playerId, from, to, and optionally promotion in the request body.
+ */
+app.post('/api/move', async (req, res) => {
   const { gameId, playerId, from, to, promotion } = req.body;
+  if (!gameId || !playerId || !from || !to) {
+    return res.status(400).json({ success: false, error: 'gameId, playerId, from, and to are required.' });
+  }
   try {
-    const result = handleMove(gameId, playerId || req.ip, from, to, promotion);
+    const result = await handleMove(gameId, playerId, from, to, promotion);
     res.json({ success: true, ...result });
   } catch (error) {
-    console.error('Move error:', error);
+    console.error('[ERROR] Move error:', error);
     res.status(400).json({ success: false, error: error.message });
   }
-};
+});
 
-// Endpoint: get game state
-const gameStateEndpoint = (req, res) => {
+/**
+ * GET /api/game
+ *
+ * retrieves the current game state.
+ * expects gameId and playerId as query parameters.
+ */
+app.get('/api/game', (req, res) => {
   const { gameId, playerId } = req.query;
-  const game = games[gameId];
-  if (!game) return res.status(404).json({ success: false, error: 'Game not found' });
-  let board = game.chess.board();
-  // If the requesting player is black, rotate the board for his view.
-  if (game.players.black === playerId) {
-    board = rotateBoard(board);
+  if (!gameId || !playerId) {
+    return res.status(400).json({ success: false, error: 'gameId and playerId are required.' });
   }
-  res.json({
-    success: true,
-    fen: game.chess.fen(),
-    turn: game.chess.turn(),
-    board,
-    moveHistory: game.moveHistory
-  });
-};
+  try {
+    const gameState = getGameState(gameId, playerId);
+    res.json({ success: true, ...gameState });
+  } catch (error) {
+    console.error('[ERROR] Get game state error:', error);
+    res.status(404).json({ success: false, error: error.message });
+  }
+});
 
-// Endpoint: root route for debugging
-const rootEndpoint = (req, res) => {
-  res.send(`
-    <h1>Chess Multiplayer Server</h1>
-    <p>Server is running on port ${CONFIG.PORT}</p>
-    <pre>${JSON.stringify(games, null, 2)}</pre>
-  `);
-};
+/**
+ * GET /
+ *
+ * home pg root / endpoint, we keep it simple idk, not like any1 visiting
+ */
+app.get('/', (req, res) => {
+  res.send(`<h1>Multiplayer Chess Server</h1><p>Server is running on port ${PORT}</p>`);
+});
 
-// Cleanup expired games
-const cleanupGames = () => {
-  const now = Date.now();
-  Object.keys(games).forEach(gameId => {
-    if (now - games[gameId].startTime > CONFIG.PUZZLE_EXPIRY_TIME) {
-      console.log(`Cleaning up expired game ${gameId}`);
-      delete games[gameId];
-    }
-  });
-};
+app.use((err, req, res, next) => {
+  console.error('[ERROR]', err);
+  res.status(500).json({ error: err.message || 'Internal Server Error' });
+});
 
-// Start periodic cleanup
-setInterval(cleanupGames, CONFIG.CLEANUP_INTERVAL);
-
-// Express server setup
-const app = express();
-
-// Configure CORS to allow any origin
-app.use(
-    cors({
-        origin: '*',
-        methods: ['GET', 'POST', 'OPTIONS'],
-        allowedHeaders: ['Content-Type'],
-        credentials: false,
-    })
-);
-
-app.use(express.json());
-
-// Routes
-app.get('/', rootEndpoint); // Root route for debugging
-app.get('/api/join', joinGameEndpoint);
-app.post('/api/move', moveEndpoint);
-app.get('/api/game', gameStateEndpoint);
-
-// Start server on port 8081
-app.listen(CONFIG.PORT, () => {
-  console.log(`Chess multiplayer server listening on port ${CONFIG.PORT}`);
+app.listen(PORT, () => {
+  console.log(`Multiplayer chess server listening on port ${PORT}`);
 });

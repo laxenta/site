@@ -1,357 +1,354 @@
 <template>
-    <div class="chess-container">
-      <!-- Header -->
-      <div class="game-header">
-        <div class="header-left">
-          <div class="player-info">Player: {{ playerName }}</div>
-          <div class="player-color">You are: {{ assignedColor }}</div>
-        </div>
-        <div class="header-right">
-          <div class="session-info">Session: {{ sessionId.substring(0, 8) }}...</div>
-          <div class="turn-info">
-            Turn: 
-            <span v-if="isYourTurn()" class="your-turn">Your move!</span>
-            <span v-else class="waiting">Waiting for opponent...</span>
-          </div>
+  <div class="chess-container">
+    <!-- Header -->
+    <div class="game-header">
+      <div class="header-left">
+        <div class="player-info">Player: {{ playerName }}</div>
+        <div class="player-color">You are: {{ assignedColor }}</div>
+      </div>
+      <div class="header-right">
+        <!-- Removed session info since we don't use sessions now -->
+        <div class="turn-info">
+          Turn:
+          <span v-if="isYourTurn()" class="your-turn">Your move!</span>
+          <span v-else class="waiting">Waiting for opponent...</span>
         </div>
       </div>
-  
-      <div class="debug-info" v-if="showDebug">
-        <h3>Debug Info</h3>
-        <div>Image Path Test: 
-          <img :src="testImagePath" class="debug-img" alt="Test Image" />
-        </div>
-        <!-- Show the board matrix in debug, useless honestly -->
-        <pre>{{ JSON.stringify(boardMatrix, null, 2) }}</pre>
+    </div>
+
+    <div class="debug-info" v-if="showDebug">
+      <h3>Debug Info</h3>
+      <div>
+        Image Path Test:
+        <img :src="testImagePath" class="debug-img" alt="Test Image" />
       </div>
-  
-      <!-- Board -->
-      <div class="board-container">
-        <div class="chess-board">
-          <div class="coordinates files">
-            <span v-for="file in files" :key="file">{{ file }}</span>
-          </div>
-          <div class="coordinates ranks">
-            <span v-for="rank in ranks" :key="rank">{{ rank }}</span>
-          </div>
-          <div class="board">
+      <pre>{{ JSON.stringify(boardMatrix, null, 2) }}</pre>
+    </div>
+
+    <!-- Board -->
+    <div class="board-container">
+      <div class="chess-board">
+        <div class="coordinates files">
+          <span v-for="file in files" :key="file">{{ file }}</span>
+        </div>
+        <div class="coordinates ranks">
+          <span v-for="rank in ranks" :key="rank">{{ rank }}</span>
+        </div>
+        <div class="board">
+          <div
+            v-for="(row, rankIndex) in boardMatrix"
+            :key="rankIndex"
+            class="board-row"
+          >
             <div
-              v-for="(row, rankIndex) in boardMatrix"
-              :key="rankIndex"
-              class="board-row"
+              v-for="(square, fileIndex) in row"
+              :key="`${rankIndex}-${fileIndex}`"
+              :class="[
+                'square',
+                getSquareColor(rankIndex, fileIndex),
+                { 'square-selected': selectedSquare === getSquareNotation(rankIndex, fileIndex) }
+              ]"
+              @click="handleSquareClick(rankIndex, fileIndex)"
             >
-              <div
-                v-for="(square, fileIndex) in row"
-                :key="`${rankIndex}-${fileIndex}`"
-                :class="[
-                  'square',
-                  getSquareColor(rankIndex, fileIndex),
-                  { 'square-selected': selectedSquare === getSquareNotation(rankIndex, fileIndex) }
-                ]"
-                @click="handleSquareClick(rankIndex, fileIndex)"
-              >
-                <!-- Use fallback display method with both image and text -->
-                <div v-if="square" class="piece-container">
-                  <img
-                    :src="getPieceImage(square)"
-                    :alt="square"
-                    class="piece-image"
-                    @error="handleImageError"
-                  />
-                  <div class="piece-fallback">{{ getPieceSymbol(square) }}</div>
-                </div>
+              <div v-if="square" class="piece-container">
+                <img
+                  :src="getPieceImage(square)"
+                  :alt="square"
+                  class="piece-image"
+                  @error="handleImageError"
+                />
               </div>
             </div>
           </div>
         </div>
       </div>
-  
-      <!-- Controls -->
-      <div class="game-controls">
-        <button class="control-btn" @click="resetGame" :disabled="isLoading">
-          {{ isLoading ? 'Loading...' : 'Reset Game' }}
-        </button>
-        <button class="control-btn" @click="toggleDebug">
-          {{ showDebug ? 'Hide Debug' : 'Show Debug' }}
-        </button>
-      </div>
-  
-      <!-- Move History -->
-      <div class="move-history" v-if="moveHistory.length">
-        <h3>Move History (FENs)</h3>
-        <ul>
-          <li v-for="(fen, index) in moveHistory" :key="index">
-            Move {{ index + 1 }}: {{ fen }}
-          </li>
-        </ul>
-      </div>
     </div>
-  </template>
-  
-  <script>
-  import axios from "axios";
-  
-  // Generate unique session/player
-  const generateSessionId = () => "session-" + Math.random().toString(36).substr(2, 9);
-  const generatePlayerName = () => {
-    const adjectives = ['Clever', 'Swift', 'Tactical', 'Strategic', 'Bold', 'Sneaky', 'Patient'];
-    const pieces = ['Pawn', 'Knight', 'Bishop', 'Rook', 'Queen', 'King'];
-    return (
-      adjectives[Math.floor(Math.random() * adjectives.length)] +
-      pieces[Math.floor(Math.random() * pieces.length)] +
-      Math.floor(Math.random() * 1000)
-    );
-  };
-  
-  // API base urllllllllllllllllllllllllllllllllllllll... k wtf it keeps changing ( rememebr this )
-  const API_BASE_URL = "https://cuddly-rotary-phone-q744jwxwpw9qfxvjx-8081.app.github.dev/api";
-  
-  // Symbol mapping for fallback
-  const pieceSymbols = {
-    'wP': '♙', 'wR': '♖', 'wN': '♘', 'wB': '♗', 'wQ': '♕', 'wK': '♔',
-    'bP': '♟', 'bR': '♜', 'bN': '♞', 'bB': '♝', 'bQ': '♛', 'bK': '♚',
-  };
-  
-  // Utility: chunk a flat array into an 8×8 matrix
-  function chunkArray(array, chunkSize) {
-    const results = [];
-    for (let i = 0; i < array.length; i += chunkSize) {
-      results.push(array.slice(i, i + chunkSize));
-    }
-    return results;
+
+    <!-- Controls -->
+    <div class="game-controls">
+      <button class="control-btn" @click="resetGame" :disabled="isLoading">
+        {{ isLoading ? 'Loading...' : 'Reset Game' }}
+      </button>
+      <button class="control-btn" @click="toggleDebug">
+        {{ showDebug ? 'Hide Debug' : 'Show Debug' }}
+      </button>
+    </div>
+
+    <!-- Move History -->
+    <div class="move-history" v-if="moveHistory.length">
+      <h3>Move History (FENs)</h3>
+      <ul>
+        <li v-for="(fen, index) in moveHistory" :key="index">
+          Move {{ index + 1 }}: {{ fen }}
+        </li>
+      </ul>
+    </div>
+  </div>
+</template>
+
+<script>
+import axios from "axios";
+import { Chess } from "chess.js";
+
+// Generate a random player name
+const generatePlayerName = () => {
+  const adjectives = [
+    "Clever",
+    "Swift",
+    "Tactical",
+    "Strategic",
+    "Bold",
+    "Sneaky",
+    "Patient"
+  ];
+  const pieces = ["Pawn", "Knight", "Bishop", "Rook", "Queen", "King"];
+  return (
+    adjectives[Math.floor(Math.random() * adjectives.length)] +
+    pieces[Math.floor(Math.random() * pieces.length)] +
+    Math.floor(Math.random() * 1000)
+  );
+};
+
+// API base URL; update as necessary.
+const API_BASE_URL =
+  "https://cuddly-rotary-phone-q744jwxwpw9qfxvjx-8081.app.github.dev/api";
+
+// Utility: If board data is flat, convert it to an 8x8 matrix.
+function chunkArray(array, chunkSize) {
+  const results = [];
+  for (let i = 0; i < array.length; i += chunkSize) {
+    results.push(array.slice(i, i + chunkSize));
   }
-  
-  export default {
-    name: "MultiplayerChess",
-    data() {
-      return {
-        files: ["a", "b", "c", "d", "e", "f", "g", "h"],
-        ranks: ["8", "7", "6", "5", "4", "3", "2", "1"],
-        boardMatrix: Array(8).fill().map(() => Array(8).fill(null)),
-        gameId: null,
-        assignedColor: "", // "white" or "black"
-        moveHistory: [],
-        selectedSquare: null,
-        isLoading: false,
-        // Session info
-        sessionId: "",
-        playerName: "",
-        turn: "",
-        // Polling
-        pollIntervalId: null,
-        // Debug
-        showDebug: false,
-        imageLoadFailures: {},
-        // For quick testing
-        testImagePath: "/src/assets/chesspieces/wP.png"
-      };
-    },
-    created() {
-      // Grab from localStorage or generate
-      const storedSession = localStorage.getItem("chessSessionId");
-      const storedPlayer = localStorage.getItem("chessPlayerName");
-      this.sessionId = storedSession || generateSessionId();
-      this.playerName = storedPlayer || generatePlayerName();
-      if (!storedSession) localStorage.setItem("chessSessionId", this.sessionId);
-      if (!storedPlayer) localStorage.setItem("chessPlayerName", this.playerName);
-      
-      console.log("Chess component created");
-      // Join a game
-      this.joinGame();
-    },
-    mounted() {
-      console.log("Chess component mounted");
-      // Poll for updates if it's the opponent's turn
-      this.pollIntervalId = setInterval(() => {
-        if (this.gameId && !this.isYourTurn()) {
-          this.refreshGameState();
-        }
-      }, 2000);
-    },
-    beforeDestroy() {
-      // Stop polling
-      if (this.pollIntervalId) {
-        clearInterval(this.pollIntervalId);
+  return results;
+}
+
+export default {
+  name: "MultiplayerChess",
+  data() {
+    return {
+      files: ["a", "b", "c", "d", "e", "f", "g", "h"],
+      ranks: ["8", "7", "6", "5", "4", "3", "2", "1"],
+      boardMatrix: Array(8).fill().map(() => Array(8).fill(null)),
+      gameId: null,
+      assignedColor: "", // "white" or "black"
+      moveHistory: [],
+      selectedSquare: null,
+      isLoading: false,
+      // Removed sessionId since we're not using sessions
+      playerName: "",
+      turn: "",
+      pollIntervalId: null,
+      showDebug: false,
+      imageLoadFailures: {},
+      // Test image path for debugging piece images (update if necessary)
+      testImagePath: "/workspaces/site/tom/src/assets/chesspieces/wP.png"
+    };
+  },
+  created() {
+    // Retrieve player name from localStorage or generate new.
+    const storedPlayer = localStorage.getItem("chessPlayerName");
+    this.playerName = storedPlayer || generatePlayerName();
+    if (!storedPlayer) localStorage.setItem("chessPlayerName", this.playerName);
+
+    console.log("Chess component created");
+    this.joinGame();
+  },
+  mounted() {
+    console.log("Chess component mounted");
+    // Poll game state every 2 seconds if it's not our turn.
+    this.pollIntervalId = setInterval(() => {
+      if (this.gameId && !this.isYourTurn()) {
+        this.refreshGameState();
+      }
+    }, 2000);
+  },
+  beforeUnmount() {
+    if (this.pollIntervalId) clearInterval(this.pollIntervalId);
+  },
+  methods: {
+    // Load piece image using require; fallback to empty string if not found.
+    getPieceImage(pieceCode) {
+      if (!pieceCode) return "";
+      try {
+        return require(`@/assets/chesspieces/${pieceCode}.png`);
+      } catch (error) {
+        console.error(`Failed to load image for ${pieceCode}`, error);
+        return "";
       }
     },
-    methods: {
-      /* 
-        1) Fallback symbol (Unicode).
-        2) The getPieceImage method uses require to bundle images.
-      */
-      getPieceSymbol(pieceCode) {
-        return pieceSymbols[pieceCode] || '';
-      },
-      getPieceImage(pieceCode) {
-        if (!pieceCode) return '';
-        console.log("Requesting image for:", pieceCode);
-        try {
-          // Must match your actual file names in /assets/chesspieces
-          return require(`@/assets/chesspieces/${pieceCode}.png`);
-        } catch (error) {
-          console.error(`Failed to load image for ${pieceCode}`, error);
-          return '';
-        }
-      },
-      handleImageError(e) {
-        const img = e.target;
-        const src = img.getAttribute('src');
-        this.imageLoadFailures[src] = true;
-        img.style.display = 'none';
-        console.error(`Failed to load image: ${src}`);
-      },
-      
-      toggleDebug() {
-        this.showDebug = !this.showDebug;
-      },
-  
-      // If boardData is flat, chunk it. Then map each square to wP, bK, etc.
-      processBoardData(boardData) {
-        let board = boardData;
-        if (boardData.length && !Array.isArray(boardData[0])) {
-          board = chunkArray(boardData, 8);
-        }
-        return board.map(row =>
-          row.map(square => {
-            if (!square) return null;
-            // Example: color=w => 'w'; type='p' => 'P' => "wP"
-            return (square.color === "w" ? "w" : "b") + square.type.toUpperCase();
-          })
-        );
-      },
-  
-      // Joins or creates a game
-      async joinGame() {
-        try {
-          this.isLoading = true;
-          console.log("Joining game...");
-          const response = await axios.get(`${API_BASE_URL}/join`, {
-            params: { playerId: this.sessionId }
-          });
-          console.log("Join response:", response.data);
-          const data = response.data;
-          if (data.success) {
-            this.gameId = data.gameId;
-            this.turn = data.turn;
-            this.assignedColor = data.assignedColor;
-            this.moveHistory.push(data.fen);
-            
-            // Build our board matrix
-            if (data.board) {
-              console.log("Processing board data");
-              this.boardMatrix = this.processBoardData(data.board);
-              console.log("Board matrix created:", this.boardMatrix);
-            }
+    handleImageError(e) {
+      const img = e.target;
+      const src = img.getAttribute("src");
+      this.imageLoadFailures[src] = true;
+      img.style.display = "none";
+      console.error(`Failed to load image: ${src}`);
+    },
+    toggleDebug() {
+      this.showDebug = !this.showDebug;
+    },
+    // Process board data into 8x8 matrix of piece codes (e.g., "wP", "bK")
+    processBoardData(boardData) {
+      let board = boardData;
+      if (boardData.length && !Array.isArray(boardData[0])) {
+        board = chunkArray(boardData, 8);
+      }
+      return board.map(row =>
+        row.map(square =>
+          square ? (square.color === "w" ? "w" : "b") + square.type.toUpperCase() : null
+        )
+      );
+    },
+    // Rotate a board matrix by 180° for black's perspective.
+    rotateMatrix(matrix) {
+      return matrix.slice().reverse().map(row => row.slice().reverse());
+    },
+    // Join or create a game via the backend API.
+    async joinGame() {
+      try {
+        this.isLoading = true;
+        console.log("Joining game...");
+        // Use only playerName as identifier
+        const response = await axios.get(`${API_BASE_URL}/join`, {
+          params: { playerName: this.playerName }
+        });
+        console.log("Join response:", response.data);
+        const data = response.data;
+        if (data.success) {
+          this.gameId = data.gameId;
+          this.turn = data.turn;
+          this.assignedColor = data.assignedColor;
+          this.moveHistory = [data.fen];
+          let processedBoard = this.processBoardData(data.board);
+          if (this.assignedColor === "black") {
+            processedBoard = this.rotateMatrix(processedBoard);
           }
-        } catch (error) {
-          console.error("Error joining game:", error);
-        } finally {
-          this.isLoading = false;
-        }
-      },
-  
-      // Refresh the current game state from the server
-      async refreshGameState() {
-        try {
-          const response = await axios.get(`${API_BASE_URL}/game`, {
-            params: { gameId: this.gameId, playerId: this.sessionId }
-          });
-          const data = response.data;
-          if (data.success) {
-            this.turn = data.turn;
-            if (data.board) {
-              this.boardMatrix = this.processBoardData(data.board);
-            }
-            if (data.fen && !this.moveHistory.includes(data.fen)) {
-              this.moveHistory.push(data.fen);
-            }
-          }
-        } catch (error) {
-          console.error("Error refreshing game state:", error);
-        }
-      },
-  
-      // Determine the square's color (light/dark)
-      getSquareColor(rankIndex, fileIndex) {
-        return (rankIndex + fileIndex) % 2 === 0 ? "square-light" : "square-dark";
-      },
-  
-      // Get algebraic notation for the square
-      getSquareNotation(rankIndex, fileIndex) {
-        return `${this.files[fileIndex]}${this.ranks[rankIndex]}`;
-      },
-  
-      // Clicking a square: either select your piece or make a move ;3
-      handleSquareClick(rankIndex, fileIndex) {
-        const square = this.getSquareNotation(rankIndex, fileIndex);
-        if (!this.selectedSquare) {
-          const piece = this.boardMatrix[rankIndex][fileIndex];
-          if (
-            piece &&
-            ((piece.startsWith('w') && this.assignedColor === "white") ||
-             (piece.startsWith('b') && this.assignedColor === "black")) &&
-            this.isYourTurn()
-          ) {
-            this.selectedSquare = square;
-          }
+          this.boardMatrix = processedBoard;
         } else {
-          const from = this.selectedSquare;
-          const to = square;
-          this.makeMove(from, to);
-          this.selectedSquare = null;
+          throw new Error(data.error || "Unknown error from API");
         }
-      },
-  
-      // Check if it's our turn
-      isYourTurn() {
-        return (
-          (this.turn === "w" && this.assignedColor === "white") ||
-          (this.turn === "b" && this.assignedColor === "black")
-        );
-      },
-  
-      // Make a move on the server
-      async makeMove(from, to) {
-        if (!this.isYourTurn()) {
-          alert("Not your turn!");
-          return;
+      } catch (error) {
+        console.error("Error joining game, using fallback board:", error);
+        // Fallback: Use chess.js to set up a standard board.
+        const chess = new Chess();
+        this.gameId = null;
+        this.turn = chess.turn();
+        this.assignedColor = "white";  // Default fallback color.
+        this.moveHistory = [chess.fen()];
+        let fallbackBoard = this.processBoardData(chess.board());
+        if (this.assignedColor === "black") {
+          fallbackBoard = this.rotateMatrix(fallbackBoard);
         }
-        try {
-          this.isLoading = true;
-          const response = await axios.post(`${API_BASE_URL}/move`, {
-            gameId: this.gameId,
-            playerId: this.sessionId,
-            from,
-            to,
-            promotion: "q"
-          });
-          const data = response.data;
-          if (data.success) {
-            this.turn = data.turn;
-            if (data.board) {
-              this.boardMatrix = this.processBoardData(data.board);
-            }
-            this.moveHistory.push(data.fen);
-          } else {
-            alert(data.error || "Move failed");
-          }
-        } catch (error) {
-          console.error("Error making move:", error);
-          alert("Move failed: " + (error.response?.data?.error || error.message));
-        } finally {
-          this.isLoading = false;
-        }
-      },
-  
-      // Reset the game by re-joining
-      async resetGame() {
-        this.selectedSquare = null;
-        this.moveHistory = [];
-        await this.joinGame();
+        this.boardMatrix = fallbackBoard;
+      } finally {
+        this.isLoading = false;
       }
+    },
+    // Refresh current game state using the backend API.
+    async refreshGameState() {
+      try {
+        const response = await axios.get(`${API_BASE_URL}/game`, {
+          params: { gameId: this.gameId, playerName: this.playerName }
+        });
+        const data = response.data;
+        if (data.success) {
+          this.turn = data.turn;
+          if (data.board) {
+            let updatedBoard = this.processBoardData(data.board);
+            if (this.assignedColor === "black") {
+              updatedBoard = this.rotateMatrix(updatedBoard);
+            }
+            this.boardMatrix = updatedBoard;
+          }
+          if (data.fen && !this.moveHistory.includes(data.fen)) {
+            this.moveHistory.push(data.fen);
+          }
+        }
+      } catch (error) {
+        console.error("Error refreshing game state:", error);
+      }
+    },
+    // Determine square color based on its position.
+    getSquareColor(rankIndex, fileIndex) {
+      return (rankIndex + fileIndex) % 2 === 0 ? "square-light" : "square-dark";
+    },
+    // Translate board coordinates into algebraic notation.
+    getSquareNotation(rankIndex, fileIndex) {
+      return `${this.files[fileIndex]}${this.ranks[rankIndex]}`;
+    },
+    // Handle click event on board square.
+    handleSquareClick(rankIndex, fileIndex) {
+      const square = this.getSquareNotation(rankIndex, fileIndex);
+      if (!this.selectedSquare) {
+        const piece = this.boardMatrix[rankIndex][fileIndex];
+        if (
+          piece &&
+          ((piece.startsWith("w") && this.assignedColor === "white") ||
+           (piece.startsWith("b") && this.assignedColor === "black")) &&
+          this.isYourTurn()
+        ) {
+          this.selectedSquare = square;
+        }
+      } else {
+        const from = this.selectedSquare;
+        const to = square;
+        this.makeMove(from, to);
+        this.selectedSquare = null;
+      }
+    },
+    // Determine if it is the current player's turn.
+    isYourTurn() {
+      return (
+        (this.turn === "w" && this.assignedColor === "white") ||
+        (this.turn === "b" && this.assignedColor === "black")
+      );
+    },
+    // Send a move to the backend API.
+    async makeMove(from, to) {
+      if (!this.isYourTurn()) {
+        alert("Not your turn!");
+        return;
+      }
+      try {
+        this.isLoading = true;
+        const response = await axios.post(`${API_BASE_URL}/move`, {
+          gameId: this.gameId,
+          playerName: this.playerName,
+          from,
+          to,
+          promotion: "q"  // Default promotion.
+        });
+        const data = response.data;
+        if (data.success) {
+          this.turn = data.turn;
+          if (data.board) {
+            let updatedBoard = this.processBoardData(data.board);
+            if (this.assignedColor === "black") {
+              updatedBoard = this.rotateMatrix(updatedBoard);
+            }
+            this.boardMatrix = updatedBoard;
+          }
+          this.moveHistory.push(data.fen);
+        } else {
+          alert(data.error || "Move failed");
+        }
+      } catch (error) {
+        console.error("Error making move:", error);
+        alert("Move failed: " + (error.response?.data?.error || error.message));
+      } finally {
+        this.isLoading = false;
+      }
+    },
+    // Reset the game by rejoining.
+    async resetGame() {
+      this.selectedSquare = null;
+      this.moveHistory = [];
+      await this.joinGame();
     }
-  };
-  </script>
+  }
+};
+</script>
+
+
   
   <style scoped>
   /* Container */

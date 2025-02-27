@@ -65,7 +65,6 @@ export default {
   methods: {
     async loadPoseNet() {
       this.net = await posenet.load();
-      // Start detection loop every 100ms
       this.detectionInterval = setInterval(this.detectPose, 100);
     },
     async setupCamera() {
@@ -158,3 +157,4 @@ export default {
   }
 };
 </script>
+<!-- later i will try to math out the joints but the lib isnt working idk why-->

@@ -4,7 +4,7 @@ const fetch = require('node-fetch'); // Make sure to install: npm install node-f
 class LichessEngine {
     constructor() {
         this.baseUrl = 'https://lichess.org/api';
-        this.token = 'lip_2iBBN7H4Hs38jGw5bLlZ';  //put yr own, i will rmeove mine when i push give the code.
+        this.token = 'i removed it lmao';  //put yr own, i will rmeove mine when i push give the code.
         this.isReady = true;
     }
 

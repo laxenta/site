@@ -16,12 +16,12 @@
     </div>
     <header class="singing-header">
       <h1 class="text-gradient">Music Time! 🎵</h1>
-      <p class="subtitle">Find your next favorite song...</p>
+      <p class="subtitle">Idk what to write here...</p>
     </header>
 
     <section class="video-grid">
       <div class="featured-video">
-        <h2>Best Tutorial Song fr :3</h2>
+        <h2>Best Tutorial Song :3</h2>
         <div class="video-wrapper">
           <iframe
             width="100%"
@@ -35,11 +35,10 @@
         </div>
         <div class="video-info">
           <h3>Hell Yes!! Lets calm down uwu</h3>
-          <p>Chill OUT BRO!🕺</p>
+          <p>Chill OUT BRO!</p>
         </div>
       </div>
 
-      <!-- Beloved fr Video Cards -->
       <div v-for="(video, index) in videos" :key="index" class="video-card">
         <div class="video-wrapper">
           <iframe
@@ -65,8 +64,6 @@
         </div>
       </div>
     </section>
-
-    <!-- Modal -->
     <div v-if="showModal" class="modal-overlay" @click="closeModal">
       <div class="modal-content" @click.stop>
         <button class="close-btn" @click="closeModal">Close ×</button>
@@ -92,13 +89,15 @@ export default {
     return {
       showModal: false,
       selectedVideo: null,
-      backgroundUrl: 'https://cdn.pixabay.com/video/2024/05/22/213042_tiny.mp4',
+      backgroundUrl:
+        'https://cdn.pixabay.com/video/2024/05/22/213042_tiny.mp4',
       backgroundMediaType: 'video/mp4',
       videos: [
         {
           embedUrl: 'https://www.youtube.com/embed/9bZkp7q19f0',
           title: 'UwU',
-          description: 'Eat bananas? : 3 lmao idk what to type in these boxes!',
+          description:
+            'Eat bananas? :3 lmao idk what to type in these boxes!',
           views: 4567891234,
           duration: '4:12'
         },
@@ -112,71 +111,66 @@ export default {
         {
           embedUrl: 'https://www.youtube.com/embed/JGwWNGJdvx8',
           title: 'Shape of You - Ed Sheeran',
-          description: 'fr fr 🎸',
+          description: 'fr fr',
           views: 456789123,
           duration: '4:23'
         },
         {
           embedUrl: 'https://www.youtube.com/embed/GUPoR6N5c_Q',
           title: 'Sweet Dreams (Are Made of This)',
-          description: 'Eurythmics - good old days of 80s fr ⭐',
+          description: 'Eurythmics - good old days of 80s fr',
           views: 789123456,
           duration: '3:36'
-        },
-        {
-          embedUrl: 'https://www.youtube.com/embed/6Ejga4kJUts',
-          title: 'The Cranberries - Zombie',
-          description: 'A powerful message that still resonates',
-          views: 345678912,
-          duration: '5:06'
-        },
-        {
-          embedUrl: 'https://www.youtube.com/embed/fJ9rUzIMcZQ',
-          title: 'Queen - Bohemian Rhapsody',
-          description: 'Is this the real life? 🎭',
-          views: 1234567890,
-          duration: '5:59'
         }
-      ]
+      ],
+      videosClicked: 0,
+      startTime: Date.now(),
+      timeSpent: 0
     }
   },
   computed: {
     isVideoBackground() {
-      const videoExtensions = ['mp4', 'webm', 'ogg'];
-      const extension = this.backgroundUrl.split('.').pop().toLowerCase();
-      return videoExtensions.includes(extension);
+      const videoExtensions = ['mp4', 'webm', 'ogg']
+      const extension = this.backgroundUrl.split('.').pop().toLowerCase()
+      return videoExtensions.includes(extension)
     },
     containerStyle() {
-      return {
-        position: 'relative',
-        overflow: 'hidden'
-      }
+      return { position: 'relative', overflow: 'hidden' }
     }
   },
   methods: {
     formatViews(views) {
-      if (views >= 1000000000) {
-        return (views / 1000000000).toFixed(1) + 'B'
-      }
-      if (views >= 1000000) {
-        return (views / 1000000).toFixed(1) + 'M'
-      }
-      if (views >= 1000) {
-        return (views / 1000).toFixed(1) + 'K'
-      }
+      if (views >= 1000000000) return (views / 1000000000).toFixed(1) + 'B'
+      if (views >= 1000000) return (views / 1000000).toFixed(1) + 'M'
+      if (views >= 1000) return (views / 1000).toFixed(1) + 'K'
       return views.toString()
     },
     playVideo(video) {
       this.selectedVideo = video
       this.showModal = true
+      this.videosClicked++
+      this.updateProgress()
     },
     closeModal() {
       this.showModal = false
       this.selectedVideo = null
+      this.updateProgress()
+    },
+    updateProgress() {
+      this.timeSpent = Date.now() - this.startTime
+      const progressData = {
+        videosClicked: this.videosClicked,
+        timeSpent: this.timeSpent
+      }
+      localStorage.setItem('singingProgress', JSON.stringify(progressData))
     }
+  },
+  beforeDestroy() {
+    this.updateProgress()
   }
 }
 </script>
+
 
 <style scoped>
 .singing-container {

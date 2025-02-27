@@ -68,6 +68,9 @@ importers:
       emscripten:
         specifier: 0.0.2-beta
         version: 0.0.2-beta
+      eventBus:
+        specifier: link:@/eventBus
+        version: link:@/eventBus
       express:
         specifier: 4.21.2
         version: 4.21.2

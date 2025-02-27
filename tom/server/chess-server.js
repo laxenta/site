@@ -3,12 +3,12 @@ const fs = require('fs');
 const csv = require('csv-parser');
 const { v4: uuidv4 } = require('uuid');
 
-// Configuration
+// Configuration, removing comments, cz i think the code is mostly done eh...
 const CONFIG = {
     MAX_CACHE_SIZE: 1000,
-    PUZZLE_EXPIRY_TIME: 30 * 60 * 1000, // 30 minutes
-    LICHESS_API_TOKEN: process.env.LICHESS_API_TOKEN || 'lip_2iBBN7H4Hs38jGw5bLlZ', // i shall not forget to rm this shit from here.
-    CLEANUP_INTERVAL: 60 * 60 * 1000 // 1 hour
+    PUZZLE_EXPIRY_TIME: 30 * 60 * 1000,
+    LICHESS_API_TOKEN: process.env.LICHESS_API_TOKEN || 'i removed it, get it yrself ni-', //i shall not forget to rm this shit from here ( i won't)
+    CLEANUP_INTERVAL: 60 * 60 * 1000
 };
 const multiplayerGames = {};
 
@@ -22,7 +22,6 @@ class ChessServerError extends Error {
     }
 }
 
-// Unicode representation of chess pieces
 const PIECE_UNICODE = {
     'w': {
         'k': '♔', 'q': '♕', 'r': '♖',
@@ -34,7 +33,6 @@ const PIECE_UNICODE = {
     }
 };
 
-// Main data stores
 const games = {};
 const puzzles = [];
 const userPuzzleStats = {};
@@ -106,7 +104,7 @@ const makeRandomMove = (chess) => {
     return moves[Math.floor(Math.random() * moves.length)];
 };
 
-// FEN Parser
+// FEN parser
 const parseFENToUnicodeBoard = (fen) => {
     const rows = fen.split(' ')[0].split('/');
     return rows.map(row => {
@@ -127,7 +125,6 @@ const parseFENToUnicodeBoard = (fen) => {
     });
 };
 
-// Puzzle Loading and Management
 const loadPuzzles = () => {
     return new Promise((resolve, reject) => {
         const puzzleData = [];
@@ -242,10 +239,8 @@ const createFreePlayGame = (playerId) => {
 };
 const joinGame = (playerId) => {
     let existingGame = null;
-    // Look for a free-play game that is waiting for an opponent, for uh pairing up :>.
     for (const gameId in games) {
         const game = games[gameId];
-        // If the game already has a player but no opponent and the joining player is not the same:
         if (game.playerId && !game.opponentId && game.playerId !== playerId) {
             existingGame = game;
             game.opponentId = playerId;
@@ -254,7 +249,6 @@ const joinGame = (playerId) => {
     }
     if (!existingGame) {
         const freePlayGame = createFreePlayGame(playerId);
-        // In the underlying game store, mark opponentId as still null.
         games[freePlayGame.gameId].opponentId = null;
         existingGame = games[freePlayGame.gameId];
     }
@@ -266,7 +260,6 @@ const joinGame = (playerId) => {
 const handleMove = async (gameId, from, to, promotion = 'q') => {
     return new Promise((resolve, reject) => {
         try {
-            // Input validation
             if (!from || !to || typeof from !== 'string' || typeof to !== 'string') {
                 throw new ChessServerError('Invalid move format', 'INVALID_INPUT');
             }
@@ -412,9 +405,7 @@ const processNextMove = async (gameId) => {
             timestamp: new Date().toISOString()
         });
     } finally {
-        // Remove processed move from queue
         queue.shift();
-        // Process next move if any
         if (queue.length > 0) {
             setTimeout(() => processNextMove(gameId), 50);
         }

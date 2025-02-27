@@ -1,8 +1,8 @@
 <template>
   <nav class="navbar" :class="{'collapsed': isCollapsed}" @mouseenter="expandNavbar" @mouseleave="collapseNavbar">
     <div class="collapse-button" @click="toggleCollapse">
-      <span v-if="isCollapsed">🖳</span>
-      <span v-else>🌪</span>
+      <span v-if="isCollapsed">🎻</span>
+      <span v-else>🎻</span>
     </div>
 
     <!-- Nav Links obv-->
@@ -79,6 +79,20 @@
             />
           </svg>
           <span>Yoga</span>
+        </router-link>
+      </li>
+
+      <li>
+        <router-link to="/progress" class="nav-item">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <path
+              d="M2 8a6 6 0 016-6h8a6 6 0 016 6v8a6 6 0 01-6 6H8a6 6 0 01-6-6V8z"
+            />
+            <path
+              d="M8 12h8M8 16h4"
+            />
+          </svg>
+          <span>Progress</span>
         </router-link>
       </li>
 

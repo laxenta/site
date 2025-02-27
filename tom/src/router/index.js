@@ -27,11 +27,6 @@ const routes = [
     component: () => import('../views/ViewsProgress.vue')
   },
   {
-    path: '/chesshome',
-    name: 'ChessHome',
-    component: () => import('../views/chess/ChessHome.vue')
-  },
-  {
     path: '/puzzles',
     name: 'ChessPuzzles',
     component: () => import('../views/chess/ChessPuzzles.vue')
